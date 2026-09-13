@@ -103,7 +103,7 @@ export function AppShell({
         <Link
           to="/planner"
           aria-label="Sentinel Flash live overview"
-          className="brand-lockup flex h-16 items-center gap-3.5 border-b border-border bg-surface/95 px-4 backdrop-blur transition-colors hover:bg-accent/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-inset"
+          className="brand-lockup flex h-16 shrink-0 items-center gap-3.5 border-b border-border bg-surface/95 px-4 backdrop-blur transition-colors hover:bg-accent/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-inset"
         >
           <img src="/sentinel-mark.svg" alt="" className="brand-mark h-9 w-9 shrink-0" aria-hidden />
           <div className="min-w-0 space-y-0.5">
