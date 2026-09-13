@@ -3,10 +3,10 @@ import { timeOnly } from "@/lib/sf/format";
 import type { OperationalEvent } from "@/lib/sf/types";
 
 const STAGE_LABEL: Record<OperationalEvent["stage"], string> = {
-  sense: "CHECK",
-  decide: "PLAN",
-  validate: "SAFETY",
-  act: "APPLY",
+  sense: "SENSE",
+  decide: "SIMULATE",
+  validate: "DECIDE",
+  act: "COMMIT",
   ledger: "SAVED",
 };
 
@@ -21,7 +21,7 @@ export function ActivityFeed({ events }: { events: OperationalEvent[] }) {
   return (
     <ol className="divide-y divide-border overflow-y-auto">
       {events.map((e) => (
-        <li key={e.id} className="flex gap-2.5 px-3 py-2.5 first:bg-success-surface/25">
+        <li key={e.id} className="activity-entry flex gap-3 px-4 py-3.5 first:bg-success-surface/25">
           <span
             className={cn("mt-1 h-full w-0.5 shrink-0 rounded", STATUS_BAR[e.status])}
             aria-hidden
@@ -38,8 +38,8 @@ export function ActivityFeed({ events }: { events: OperationalEvent[] }) {
                 </span>
               )}
             </div>
-            <p className="mt-0.5 text-xs font-medium text-foreground">{e.type}</p>
-            <p className="text-xs leading-snug text-muted-foreground">{e.message}</p>
+            <p className="mt-1 text-xs font-medium text-foreground">{e.type}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{e.message}</p>
           </div>
         </li>
       ))}

@@ -47,7 +47,7 @@ function ApproverPage() {
       }
       actions={<Badge tone={pending.length ? "warning" : "neutral"}>{pending.length} pending</Badge>}
     >
-      <div className="space-y-3 p-3">
+      <div className="space-y-5 p-4 sm:p-5 lg:p-6">
         <Panel title="Waiting for review" bodyClassName="overflow-x-auto">
           {pending.length === 0 ? (
             <EmptyState

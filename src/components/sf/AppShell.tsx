@@ -1,14 +1,13 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
-  Activity,
   Bell,
   ClipboardCheck,
   Database,
   GitBranch,
   LogOut,
   Maximize2,
+  Minimize2,
   PackageSearch,
-  Play,
   Radar,
   Radio,
   ScrollText,
@@ -16,14 +15,13 @@ import {
   Snowflake,
   Sparkles,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import { useSentinel } from "@/lib/sf/store";
 import { Badge, Button } from "./ui";
 import { ThemeToggle } from "./theme";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dateTime } from "@/lib/sf/format";
 
 const NAV = [
@@ -33,15 +31,6 @@ const NAV = [
   { to: "/scenarios", label: "Recovery plans", group: "Decisions", icon: GitBranch },
   { to: "/approver", label: "Review decisions", group: "Governance", icon: ClipboardCheck },
   { to: "/ledger", label: "Decision history", group: "Audit", icon: ScrollText },
-] as const;
-
-const WALKTHROUGH = [
-  { to: "/planner", title: "Live overview", text: "Show the map, data-source status, and updates as they happen." },
-  { to: "/shipments", title: "Shipment intelligence", text: "Search and filter the live shipment network." },
-  { to: "/integrity", title: "Temperature safety", text: "Show the safety rules and why unsafe plans are blocked." },
-  { to: "/scenarios", title: "AI recovery plans", text: "Run a demo and compare each plan with doing nothing." },
-  { to: "/approver", title: "Human review", text: "Show how a person can approve, reject, or change a plan." },
-  { to: "/ledger", title: "Proof of every decision", text: "Open the reason, source data, steps, then download JSON or CSV." },
 ] as const;
 
 export function AppShell({
@@ -56,36 +45,82 @@ export function AppShell({
   actions?: ReactNode;
 }) {
   const { state, logout } = useSentinel();
-  const navigate = useNavigate();
-  const savedGuideStep = typeof window === "undefined" ? null : sessionStorage.getItem("sf.walkthrough.step");
-  const [guideOpen, setGuideOpen] = useState(savedGuideStep !== null);
-  const [guideStep, setGuideStep] = useState(() => Number(savedGuideStep ?? 0));
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const shellRef = useRef<HTMLDivElement>(null);
   const pending = Object.values(state.runs).filter((r) => r.state === "PENDING_APPROVAL").length;
   const notifications = state.activity.filter((event) =>
     /detected|refusal|approval|notification|completed|failed/i.test(event.type),
   ).slice(0, 30);
-  const step = WALKTHROUGH[guideStep] ?? WALKTHROUGH[0];
+
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !document.fullscreenElement) setIsFullscreen(false);
+    };
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreen);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    if (isFullscreen) {
+      if (document.fullscreenElement) {
+        try {
+          await document.exitFullscreen();
+        } catch {
+          // CSS fallback below still exits the expanded view.
+        }
+      }
+      setIsFullscreen(false);
+      return;
+    }
+
+    const target = shellRef.current;
+    if (target?.requestFullscreen && document.fullscreenEnabled) {
+      try {
+        await target.requestFullscreen();
+        setIsFullscreen(true);
+        return;
+      } catch {
+        // Embedded previews can block the native API; use the reliable CSS fallback.
+      }
+    }
+    setIsFullscreen(true);
+  };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface md:flex">
-        <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-          <Activity className="h-4 w-4 text-primary" aria-hidden />
-          <div className="leading-tight">
-            <p className="text-sm font-semibold tracking-tight">Sentinel Flash</p>
-            <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
+    <div
+      ref={shellRef}
+      className={cn(
+        "app-shell flex h-screen w-full overflow-hidden bg-background",
+        isFullscreen && !document.fullscreenElement && "fixed inset-0 z-[100] h-[100dvh] w-screen",
+      )}
+    >
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface md:flex">
+        <Link
+          to="/planner"
+          aria-label="Sentinel Flash live overview"
+          className="brand-lockup flex h-16 items-center gap-3.5 border-b border-border bg-surface/95 px-4 backdrop-blur transition-colors hover:bg-accent/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-inset"
+        >
+          <img src="/sentinel-mark.svg" alt="" className="brand-mark h-9 w-9 shrink-0" aria-hidden />
+          <div className="min-w-0 space-y-0.5">
+            <p className="truncate text-[15px] leading-4 font-semibold tracking-tight">Sentinel Flash</p>
+            <p className="truncate text-[9px] leading-3 font-medium tracking-[0.08em] text-muted-foreground uppercase">
               Disruption control tower
             </p>
           </div>
-        </div>
+        </Link>
 
-        <nav className="flex-1 space-y-4 px-2 py-4">
+        <nav className="flex-1 space-y-5 px-3 py-5">
           {NAV.map((item) => (
             <div key={item.to}>
               <p className="label-xs px-2 pb-1">{item.group}</p>
               <Link
                 to={item.to}
-                className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="side-nav-link flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground"
                 activeProps={{ className: "bg-accent text-foreground font-medium" }}
               >
                 <span className="flex items-center gap-2">
@@ -106,18 +141,15 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-surface px-4">
+        <header className="app-header flex h-16 shrink-0 items-center justify-between gap-5 border-b border-border bg-surface/95 px-4 backdrop-blur sm:px-6 [&_button]:rounded-full">
           <div className="min-w-0">
-            <h1 className="truncate text-base font-semibold tracking-tight">{title}</h1>
-            {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
+            <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
+            {subtitle && <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>}
           </div>
           <div className="flex items-center gap-2">
             {actions}
-            <Button size="sm" variant="outline" className="hidden lg:inline-flex" onClick={() => { sessionStorage.setItem("sf.walkthrough.step", "0"); setGuideStep(0); setGuideOpen(true); navigate({ to: WALKTHROUGH[0].to }); }}>
-              <Play className="h-3.5 w-3.5" /> Judge walkthrough
-            </Button>
-            <button type="button" aria-label="Toggle fullscreen" onClick={() => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground">
-              <Maximize2 className="h-4 w-4" />
+            <button type="button" aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} onClick={toggleFullscreen} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground">
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
             <Sheet>
               <SheetTrigger asChild>
@@ -165,19 +197,12 @@ export function AppShell({
 
         <SystemStatusBar />
 
-        <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-border bg-surface px-2 py-1.5 md:hidden">
+        <nav className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-border bg-surface px-3 py-2 md:hidden">
           {NAV.map((item) => <Link key={item.to} to={item.to} className="whitespace-nowrap rounded px-2 py-1 text-[11px] text-muted-foreground" activeProps={{ className: "bg-accent text-foreground font-semibold" }}>{item.label}</Link>)}
         </nav>
 
-        <main className="min-h-0 flex-1 overflow-auto">{children}</main>
+        <main className="app-main min-h-0 flex-1 scroll-smooth overflow-auto">{children}</main>
       </div>
-      <Dialog open={guideOpen} onOpenChange={(open) => { setGuideOpen(open); if (!open) sessionStorage.removeItem("sf.walkthrough.step"); }}>
-        <DialogContent className="border-primary/30 bg-surface">
-          <DialogHeader><DialogTitle>{guideStep + 1} / {WALKTHROUGH.length} · {step.title}</DialogTitle><DialogDescription>{step.text}</DialogDescription></DialogHeader>
-          <div className="rounded-lg border border-border bg-surface-muted p-3 text-xs text-muted-foreground">Presentation tip: show the <strong className="text-foreground">{state.systemStatus.mode}</strong> bar and the data labels. They make it clear what is live, demo, or unavailable.</div>
-          <div className="flex justify-between gap-2"><Button variant="outline" disabled={guideStep === 0} onClick={() => { const next = Math.max(0, guideStep - 1); sessionStorage.setItem("sf.walkthrough.step", String(next)); setGuideStep(next); navigate({ to: (WALKTHROUGH[next] ?? WALKTHROUGH[0]).to }); }}>Previous</Button><Button onClick={() => { if (guideStep === WALKTHROUGH.length - 1) { sessionStorage.removeItem("sf.walkthrough.step"); setGuideOpen(false); return; } const next = Math.min(WALKTHROUGH.length - 1, guideStep + 1); sessionStorage.setItem("sf.walkthrough.step", String(next)); setGuideStep(next); navigate({ to: (WALKTHROUGH[next] ?? WALKTHROUGH[0]).to }); }}>{guideStep === WALKTHROUGH.length - 1 ? "Finish" : "Next scene"}</Button></div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -188,7 +213,7 @@ function SystemStatusBar() {
   const live = s.mode === "LIVE";
   const healthy = s.backend === "healthy";
   const item = (label: string, value: string, Icon: typeof Radio) => (
-    <span className="flex items-center gap-1.5 whitespace-nowrap">
+    <span className="status-chip flex items-center gap-1.5 whitespace-nowrap rounded-full border border-current/20 bg-background/25 px-2.5 py-1.5 shadow-sm">
       <Icon className="h-3 w-3" aria-hidden />
       <span className="font-semibold">{label}</span>
       <span className="opacity-75">{value}</span>
@@ -197,13 +222,13 @@ function SystemStatusBar() {
   return (
     <div
       className={cn(
-        "flex min-h-9 shrink-0 items-center gap-4 overflow-x-auto border-b px-4 text-[10px] tracking-wide uppercase",
+        "status-ribbon flex min-h-12 shrink-0 items-center gap-2 overflow-x-auto border-b px-4 py-2 text-[10px] tracking-wide uppercase sm:px-6",
         live && healthy
-          ? "border-success/30 bg-success-surface text-success"
-          : "border-warning/30 bg-warning-surface text-warning",
+          ? "border-success/25 bg-success-surface/70 text-success"
+          : "border-warning/25 bg-warning-surface/70 text-warning",
       )}
     >
-      <span className="flex items-center gap-2 text-xs font-bold">
+      <span className="status-chip flex items-center gap-2 whitespace-nowrap rounded-full border border-current/25 bg-background/30 px-3 py-1.5 text-[11px] font-bold shadow-sm">
         <span className={cn("relative flex h-2.5 w-2.5", healthy && "status-ping")}>
           <span className="absolute inline-flex h-full w-full rounded-full bg-current opacity-40" />
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-current" />
@@ -215,7 +240,7 @@ function SystemStatusBar() {
       {item("Weather", s.weather, Radio)}
       {item("AIS", s.ais, Radio)}
       {item("Database", s.database, Database)}
-      <span className="ml-auto hidden whitespace-nowrap opacity-70 lg:inline">
+      <span className="status-chip ml-auto hidden whitespace-nowrap rounded-full border border-current/15 bg-background/20 px-2.5 py-1.5 opacity-75 xl:inline">
         Every data source is clearly labeled
       </span>
     </div>
@@ -233,9 +258,9 @@ export function DemoControls({ className }: { className?: string }) {
   ];
 
   return (
-    <div className={cn("border-t border-border px-3 py-3", className)}>
-      <p className="label-xs pb-2">Presentation demos</p>
-      <div className="space-y-1.5">
+    <div className={cn("border-t border-border px-4 py-4", className)}>
+      <p className="label-xs pb-3">Presentation demos</p>
+      <div className="space-y-2">
         {scenarios.map((s) => {
           const run = state.runs[s.id];
           return (
@@ -243,7 +268,7 @@ export function DemoControls({ className }: { className?: string }) {
               key={s.id}
               size="sm"
               variant="outline"
-              className="w-full justify-between"
+              className="w-full justify-between px-3"
               disabled={isBusy(s.id)}
               onClick={async () => {
                 await triggerScenario(s.id, true);
@@ -272,7 +297,7 @@ export function DemoControls({ className }: { className?: string }) {
           Clear current view
         </Button>
       </div>
-      <p className="pt-2 text-[10px] leading-snug text-muted-foreground">
+      <p className="pt-3 text-[10px] leading-relaxed text-muted-foreground">
         These three buttons use fixed demo signals, so they work the same during every presentation. Other shipments use live checks.
       </p>
     </div>

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Activity, ClipboardCheck, Radar } from "lucide-react";
+import { ClipboardCheck, Radar } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/sf/theme";
@@ -42,9 +42,12 @@ function LoginPage() {
   return (
     <div className="grid min-h-screen grid-cols-1 bg-background lg:grid-cols-[1.05fr_0.95fr]">
       <section className="hidden flex-col justify-between border-r border-border bg-surface px-12 py-10 lg:flex">
-        <div className="flex items-center gap-2">
-          <Activity className="h-5 w-5 text-primary" aria-hidden />
-          <span className="text-sm font-semibold tracking-tight">Sentinel Flash</span>
+        <div className="flex items-center gap-3">
+          <img src="/sentinel-mark.svg" alt="" className="h-9 w-9" aria-hidden />
+          <div className="space-y-0.5">
+            <p className="text-[15px] leading-4 font-semibold tracking-tight">Sentinel Flash</p>
+            <p className="text-[9px] leading-3 font-medium tracking-[0.08em] text-muted-foreground uppercase">Disruption control tower</p>
+          </div>
         </div>
 
         <div className="max-w-md">

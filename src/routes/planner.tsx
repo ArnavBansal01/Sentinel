@@ -34,9 +34,10 @@ export const Route = createFileRoute("/planner")({
 });
 
 const STAGES = [
-  { key: "sense", label: "Check", note: "Read the available data" },
-  { key: "decide", label: "Plan", note: "Compare recovery choices" },
-  { key: "act", label: "Apply", note: "Apply or ask a person" },
+  { key: "sense", label: "Sense", note: "Read the available data" },
+  { key: "simulate", label: "Simulate", note: "Build recovery choices" },
+  { key: "decide", label: "Decide", note: "Check rules and choose" },
+  { key: "act", label: "Commit", note: "Apply or ask a person" },
 ] as const;
 
 function PlannerPage() {
@@ -55,7 +56,8 @@ function PlannerPage() {
   const stageCounts = useMemo(
     () => ({
       sense: state.activity.filter((e) => e.stage === "sense").length,
-      decide: state.activity.filter((e) => e.stage === "decide" || e.stage === "validate").length,
+      simulate: state.activity.filter((e) => e.stage === "decide").length,
+      decide: state.activity.filter((e) => e.stage === "validate").length,
       act: state.activity.filter((e) => e.stage === "act").length,
     }),
     [state.activity],
@@ -77,8 +79,8 @@ function PlannerPage() {
         ) : undefined
       }
     >
-      <div className="flex min-h-full flex-col gap-3 p-3">
-        <div className="panel grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+      <div className="flex min-h-full flex-col gap-5 p-4 sm:p-5 lg:p-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5 xl:gap-4">
           <Metric
             label="Shipments watched"
             value={String(state.shipments.length)}
@@ -105,26 +107,26 @@ function PlannerPage() {
           <Metric label="Cargo value at risk" value={usd(atRisk)} hint="Shipments with problems" />
         </div>
 
-        <div className="panel flex flex-wrap items-center gap-2 px-3 py-2">
+        <div className="panel grid gap-2 p-2.5 sm:grid-cols-2 xl:grid-cols-4">
           {STAGES.map((s, i) => (
-            <div key={s.key} className="flex items-center gap-2">
-              <div className="flex items-baseline gap-2 rounded-md bg-surface-muted px-2.5 py-1">
-                <span className="label-xs text-foreground/80">{s.label}</span>
-                <span className="num text-xs font-semibold">{stageCounts[s.key]}</span>
-                <span className="hidden text-[11px] text-muted-foreground lg:inline">{s.note}</span>
+            <div key={s.key} className="workflow-step relative flex min-w-0 items-center gap-3 rounded-lg border border-transparent bg-surface-muted px-3 py-2.5 transition-colors hover:border-border-strong">
+              <span className="num grid h-7 w-7 shrink-0 place-items-center rounded-full border border-primary/25 bg-success-surface text-[11px] font-bold text-primary">
+                {i + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <span className="label-xs block text-foreground/90">{s.label}</span>
+                <span className="block truncate text-[11px] text-muted-foreground">{s.note}</span>
               </div>
-              {i < STAGES.length - 1 && <span className="text-muted-foreground">→</span>}
+              <span className="num rounded-md bg-surface px-2 py-1 text-xs font-semibold shadow-sm">{stageCounts[s.key]}</span>
+              {i < STAGES.length - 1 && <span className="absolute -right-2.5 z-10 hidden text-muted-foreground xl:block">→</span>}
             </div>
           ))}
-          <span className="ml-auto text-[11px] text-muted-foreground">
-            Counts come from real system updates.
-          </span>
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[310px_minmax(0,1fr)_360px]">
+        <div className="grid min-h-0 flex-1 gap-5 xl:grid-cols-[290px_minmax(520px,1fr)_350px]">
           <Panel
             title="What the system is doing"
-            subtitle="Check → Plan → Apply"
+            subtitle="Sense → Simulate → Decide → Commit"
             actions={
               <Badge
                 tone={state.systemStatus.backend === "healthy" ? "success" : "danger"}
@@ -133,7 +135,7 @@ function PlannerPage() {
                 {state.systemStatus.backend === "healthy" ? "LIVE UPDATES" : "OFFLINE"}
               </Badge>
             }
-            className="max-h-[560px] xl:max-h-none"
+            className="max-h-[560px] xl:max-h-[620px]"
             bodyClassName="overflow-hidden flex"
           >
             {state.activity.length === 0 ? (
@@ -145,9 +147,9 @@ function PlannerPage() {
 
           <Panel
             title="Network map"
-            subtitle="Saved positions and routes"
-            className="min-h-[360px]"
-            bodyClassName="p-0"
+            subtitle="Drag to move · scroll to zoom · select a ship"
+            className="min-h-0 self-start"
+            bodyClassName="p-0 aspect-[2/1] min-h-[320px] max-h-[540px] flex-none"
           >
             <WorldMap
               shipments={state.shipments}
@@ -160,7 +162,7 @@ function PlannerPage() {
           <Panel
             title="Shipments needing attention"
             subtitle={`${state.shipments.length} shipments being watched`}
-            className="max-h-[620px] xl:max-h-none"
+            className="max-h-[620px] xl:max-h-[620px]"
             bodyClassName="overflow-hidden flex"
           >
             <ShipmentList shipments={ordered} onHover={setHovered} />

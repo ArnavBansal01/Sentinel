@@ -52,8 +52,8 @@ function LedgerPage() {
         </div>
       }
     >
-      <div className="p-3">
-        <div className="mb-3 grid gap-3 md:grid-cols-3">
+      <div className="p-4 sm:p-5 lg:p-6">
+        <div className="mb-5 grid gap-4 md:grid-cols-3">
           <AuditMetric
             label="Saved decisions"
             value={String(entries.length)}

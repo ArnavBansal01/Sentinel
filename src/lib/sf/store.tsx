@@ -402,36 +402,39 @@ function mapRun(p: any): WorkflowRun {
 }
 
 function mapDisruption(d: any): DisruptionEvent {
+  const location = d.location || "the route";
   return {
-      id: d.eventId,
-      shipmentId: d.shipmentId,
-      title: `${d.type} at ${d.location}`,
-      category: d.type,
-      detectedAtIso: d.detectedAt,
-      location: d.location,
-      summary: d.explanation,
-      verified: d.exists,
-      sources: d.evidence.map((e: any) => ({
-        id: e.id,
-        connector:
-          e.type === "NEWS"
-            ? "NewsConnector"
-            : e.type === "WEATHER"
-              ? "WeatherConnector"
-              : e.type === "AIS"
-                ? "AISConnector"
-                : "PortConnector",
-        label: e.title,
-        publisher: `${e.provider} · ${e.dataStatus}`,
-        observedAtIso: e.timestamp,
-        summary: e.description,
-        confidence: e.confidence,
-        simulated: e.dataStatus !== "LIVE",
-        dataStatus: e.dataStatus,
-        provider: e.provider,
-        url: e.url,
-      })),
-    };
+    id: d.eventId,
+    shipmentId: d.shipmentId,
+    title: d.exists ? `${d.type} at ${location}` : `No disruption found near ${location}`,
+    category: d.exists ? d.type : "live_check",
+    detectedAtIso: d.detectedAt,
+    location,
+    summary: d.exists
+      ? d.explanation
+      : `The live checks did not find enough reliable evidence of a disruption near ${location}.`,
+    verified: d.exists,
+    sources: d.evidence.map((e: any) => ({
+      id: e.id,
+      connector:
+        e.type === "NEWS"
+          ? "NewsConnector"
+          : e.type === "WEATHER"
+            ? "WeatherConnector"
+            : e.type === "AIS"
+              ? "AISConnector"
+              : "PortConnector",
+      label: e.title,
+      publisher: `${e.provider} · ${e.dataStatus}`,
+      observedAtIso: e.timestamp,
+      summary: e.description,
+      confidence: e.confidence,
+      simulated: e.dataStatus !== "LIVE",
+      dataStatus: e.dataStatus,
+      provider: e.provider,
+      url: e.url,
+    })),
+  };
 }
 
 function mapDecisionStatus(status: string, acted: boolean): Decision["overall_status"] {

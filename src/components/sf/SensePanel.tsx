@@ -21,7 +21,9 @@ export function SensePanel({ event }: { event: DisruptionEvent }) {
             <h3 className="text-sm font-semibold">{event.title.replaceAll("_", " ").toLowerCase()}</h3>
           </div>
           <div className="flex items-center gap-2">
-            <Badge tone={event.verified ? "warning" : "neutral"}>{event.category.replaceAll("_", " ")}</Badge>
+            <Badge tone={event.verified ? "warning" : "success"}>
+              {event.verified ? event.category.replaceAll("_", " ") : "CHECK COMPLETE"}
+            </Badge>
             <span className="num text-[11px] text-muted-foreground">
               detected {dateTime(event.detectedAtIso)}
             </span>
@@ -99,9 +101,9 @@ export function SensePanel({ event }: { event: DisruptionEvent }) {
         ))}
       </div>
 
-      <div className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 ${event.verified ? "border-success/30 bg-success-surface" : "border-warning/30 bg-warning-surface"}`}>
-        <CheckCircle2 className={`h-4 w-4 ${event.verified ? "text-success" : "text-warning"}`} aria-hidden />
-        <span className={`text-xs font-semibold ${event.verified ? "text-success" : "text-warning"}`}>
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-success/30 bg-success-surface px-3 py-2">
+        <CheckCircle2 className="h-4 w-4 text-success" aria-hidden />
+        <span className="text-xs font-semibold text-success">
           {event.verified ? "Disruption confirmed" : "No disruption confirmed"}
         </span>
         <span className="text-[11px] text-muted-foreground">

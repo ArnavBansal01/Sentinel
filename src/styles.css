@@ -58,7 +58,7 @@
 }
 
 :root {
-  --radius: 0.375rem;
+  --radius: 0.625rem;
 
   --background: oklch(0.982 0.004 95);
   --foreground: oklch(0.24 0.035 258);
@@ -177,7 +177,7 @@
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 16px 50px color-mix(in oklch, black 15%, transparent);
+  box-shadow: 0 12px 36px color-mix(in oklch, black 11%, transparent);
 }
 
 .dark body {
@@ -236,4 +236,193 @@
   box-shadow:
     0 0 0 1px color-mix(in oklch, var(--color-success) 20%, transparent),
     0 0 16px color-mix(in oklch, var(--color-success) 18%, transparent);
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes header-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chip-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-7px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes workflow-enter {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes alert-ring {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scale(0.82);
+  }
+  50% {
+    opacity: 0.78;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes route-flow {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+
+@keyframes activity-enter {
+  from {
+    opacity: 0;
+    background-color: color-mix(in oklch, var(--color-success-surface) 85%, transparent);
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.app-header,
+.brand-lockup {
+  animation: header-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.app-main > * {
+  animation: page-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.status-chip {
+  animation: chip-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+}
+
+.status-ribbon > .status-chip:nth-child(2) { animation-delay: 45ms; }
+.status-ribbon > .status-chip:nth-child(3) { animation-delay: 90ms; }
+.status-ribbon > .status-chip:nth-child(4) { animation-delay: 135ms; }
+.status-ribbon > .status-chip:nth-child(5) { animation-delay: 180ms; }
+.status-ribbon > .status-chip:nth-child(6) { animation-delay: 225ms; }
+.status-ribbon > .status-chip:nth-child(7) { animation-delay: 270ms; }
+
+.workflow-step {
+  animation: workflow-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.workflow-step:nth-child(2) { animation-delay: 70ms; }
+.workflow-step:nth-child(3) { animation-delay: 140ms; }
+.workflow-step:nth-child(4) { animation-delay: 210ms; }
+
+.panel,
+.metric-card,
+.side-nav-link,
+button,
+a {
+  transition-duration: 180ms;
+  transition-timing-function: ease-out;
+}
+
+.map-alert-ring {
+  animation: alert-ring 1.8s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.map-route-alert {
+  animation: route-flow 1.4s linear infinite;
+}
+
+.activity-entry:first-child {
+  animation: activity-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.app-main tbody tr {
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+@media (hover: hover) {
+  .brand-lockup:hover .brand-mark {
+    filter: drop-shadow(0 0 9px color-mix(in oklch, var(--color-primary) 45%, transparent));
+    transform: translateY(-1px) rotate(-2deg) scale(1.04);
+  }
+
+  .brand-mark {
+    transition: filter 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .side-nav-link:hover {
+    transform: translateX(3px);
+  }
+
+  .side-nav-link:hover svg {
+    transform: scale(1.1);
+  }
+
+  .side-nav-link svg {
+    transition: transform 180ms ease;
+  }
+
+  .status-chip:hover {
+    background-color: color-mix(in oklch, var(--color-background) 45%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .metric-card:hover {
+    border-color: var(--color-border-strong);
+    box-shadow: 0 16px 42px color-mix(in oklch, black 15%, transparent);
+    transform: translateY(-2px);
+  }
+
+  .workflow-step:hover {
+    box-shadow: 0 8px 22px color-mix(in oklch, black 10%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .app-main tbody tr:hover {
+    box-shadow: inset 3px 0 0 color-mix(in oklch, var(--color-primary) 70%, transparent);
+  }
+}
+
+button:not(:disabled):active,
+a:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

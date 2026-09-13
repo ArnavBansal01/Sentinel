@@ -9,6 +9,7 @@ import { GeminiDecisionSchema } from "../src/agents/decide/decisionSchema.js";
 import { applyPolicy } from "../src/policy/policyEngine.js";
 import { shipments } from "../src/shipments/seed.js";
 import { orchestrate, approve } from "../src/orchestrator.js";
+import { app } from "../src/server.js";
 import { repository } from "../src/persistence/database.js";
 import { eventBus } from "../src/events/eventBus.js";
 import type { Decision, Signal } from "../src/types/domain.js";
@@ -170,5 +171,72 @@ describe("integration", () => {
     eventBus.off("event", fn);
     expect(events.indexOf("sense.started")).toBeLessThan(events.indexOf("decide.started"));
     expect(events.indexOf("policy.completed")).toBeLessThan(events.indexOf("act.started"));
+  });
+
+  it("loads every shipment and completes every demo workflow without missing-route errors", async () => {
+    expect(shipments).toHaveLength(8);
+    for (const shipment of shipments) {
+      expect(repository.shipment(shipment.id)?.id).toBe(shipment.id);
+      const result: any = await orchestrate(shipment.id, randomUUID(), true);
+      expect(result.shipment.id).toBe(shipment.id);
+      expect(result.disruption.evidence.length).toBeGreaterThan(0);
+      expect(result.decision).not.toBeNull();
+      expect(["AUTO_COMMIT", "PENDING_APPROVAL"]).toContain(result.decision.overallStatus);
+    }
+  });
+
+  it("supports approver approve, reject and viable override outcomes", async () => {
+    const approvalRun: any = await orchestrate("SF-1002", randomUUID(), true);
+    expect(approvalRun.decision.overallStatus).toBe("PENDING_APPROVAL");
+    const approved: any = await approve("SF-1002", "approve", "approver");
+    expect(approved.actionId).toBeTruthy();
+    expect(repository.shipment("SF-1002")?.currentState).toBe("COMMITTED");
+
+    const rejectRun: any = await orchestrate("SF-1003", randomUUID(), true);
+    expect(rejectRun.decision.overallStatus).toBe("PENDING_APPROVAL");
+    const rejected: any = await approve("SF-1003", "reject", "approver");
+    expect(rejected.status).toBe("REJECTED");
+    expect(repository.shipment("SF-1003")?.currentState).toBe("ESCALATED");
+
+    const overrideRun: any = await orchestrate("SF-1003", randomUUID(), true);
+    const alternative = overrideRun.decision.options.find(
+      (option: any) => option.status === "viable" && option.id !== overrideRun.decision.recommendedOption,
+    );
+    expect(alternative).toBeTruthy();
+    const overridden: any = await approve("SF-1003", "override", "approver", alternative.id);
+    expect(overridden.decision.recommendedOption).toBe(alternative.id);
+    expect(repository.shipment("SF-1003")?.currentState).toBe("COMMITTED");
+  });
+
+  it("returns correct HTTP status and downloadable audit formats", async () => {
+    const server = app.listen(0);
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("Test server did not bind");
+      const base = `http://127.0.0.1:${address.port}`;
+
+      expect((await fetch(`${base}/api/health`)).status).toBe(200);
+      for (const shipment of shipments) {
+        const response = await fetch(`${base}/api/shipments/${shipment.id}`);
+        expect(response.status).toBe(200);
+        expect((await response.json() as any).id).toBe(shipment.id);
+      }
+      expect((await fetch(`${base}/api/shipments/NOT-A-SHIPMENT`)).status).toBe(404);
+
+      const csv = await fetch(`${base}/api/ledger/export?format=csv`);
+      expect(csv.status).toBe(200);
+      expect(csv.headers.get("content-type")).toContain("text/csv");
+      expect(await csv.text()).toContain('"ai_reasoning"');
+
+      const json = await fetch(`${base}/api/ledger/export?format=json`);
+      expect(json.status).toBe(200);
+      expect(json.headers.get("content-disposition")).toContain("sentinel-ledger");
+      expect((await json.json() as any).appendOnly).toBe(true);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
   });
 });

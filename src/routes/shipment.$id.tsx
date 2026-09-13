@@ -34,10 +34,11 @@ export const Route = createFileRoute("/shipment/$id")({
   ),
 });
 
-const STAGE_SEQUENCE = ["Check", "Plan", "Safety check", "Apply"] as const;
+const STAGE_SEQUENCE = ["Sense", "Simulate", "Decide", "Commit"] as const;
 
 function stageIndex(run: WorkflowRun | undefined, busy: boolean): number {
   if (!run) return busy ? 0 : -1;
+  if (run.state === "ERROR") return -1;
   if (busy) return run.state === "DECISION_GENERATING" ? 1 : 0;
   switch (run.state) {
     case "DISRUPTION_DETECTED":
@@ -86,7 +87,7 @@ function ShipmentDetail() {
         </Link>
       }
     >
-      <div className="space-y-3 p-3">
+      <div className="space-y-5 p-4 sm:p-5 lg:p-6">
         {/* Header facts */}
         <div className="panel grid grid-cols-2 gap-y-3 px-4 py-3 md:grid-cols-4 xl:grid-cols-7">
           <Fact label="Status" value={<ShipmentStatusBadge status={shipment.status} />} />
@@ -161,16 +162,16 @@ function ShipmentDetail() {
         )}
 
         {/* SENSE */}
-        <Panel title="1 · Check the situation" subtitle="Look at news, weather, ships, and ports" bodyClassName="p-3">
-          {run ? (
+        <Panel title="1 · Sense" subtitle="Check news, weather, ships, and ports" bodyClassName="p-3">
+          {run && run.state !== "ERROR" ? (
             <SensePanel event={run.disruption} />
           ) : (
             <div className="flex flex-col items-start gap-2 py-2">
               <p className="text-xs text-muted-foreground">
-                This shipment has not been checked yet. We will look at the available live data before making any plan.
+                {run?.state === "ERROR" ? "The last check failed. Try again to reconnect and check the live data." : "This shipment has not been checked yet. We will look at the available live data before making any plan."}
               </p>
               <Button size="sm" disabled={busy || state.systemStatus.backend !== "healthy"} onClick={() => triggerScenario(shipment.id)}>
-                {busy ? "Checking live data…" : "Check live data"}
+                {busy ? "Checking live data…" : run?.state === "ERROR" ? "Try live check again" : "Check live data"}
               </Button>
             </div>
           )}
@@ -178,8 +179,8 @@ function ShipmentDetail() {
 
         {/* DECIDE */}
         <Panel
-          title="2 · Choose a recovery plan"
-          subtitle="Compare each plan with doing nothing"
+          title="2 · Simulate and decide"
+          subtitle="Compare recovery choices, then select the safest plan"
           bodyClassName="p-3 space-y-3"
         >
           {busy && !decision && (
@@ -216,11 +217,11 @@ function ShipmentDetail() {
         </Panel>
 
         {/* ACT */}
-        <Panel title="3 · Apply the plan" subtitle="See whether it was applied or sent for human review" bodyClassName="p-3 space-y-3">
+        <Panel title="3 · Commit" subtitle="Apply the plan or send it for human review" bodyClassName="p-3 space-y-3">
           {run && run.state === "PENDING_APPROVAL" && <ApprovalPanel run={run} />}
           {run && (run.act || run.state === "REJECTED_ESCALATED") && <ActionResultPanel run={run} />}
           {(!run || (!run.act && run.state !== "PENDING_APPROVAL" && run.state !== "REJECTED_ESCALATED")) && (
-            <p className="text-xs text-muted-foreground">No action has been recorded for this shipment.</p>
+            <p className="text-xs text-muted-foreground">Nothing has been changed for this shipment.</p>
           )}
         </Panel>
       </div>

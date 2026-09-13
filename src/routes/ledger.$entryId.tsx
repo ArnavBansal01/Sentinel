@@ -94,7 +94,7 @@ function LedgerDetail() {
         </Link>
       }
     >
-      <div className="space-y-3 p-3">
+      <div className="space-y-5 p-4 sm:p-5 lg:p-6">
         <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-muted px-3 py-2">
           <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
           <span className="text-xs text-muted-foreground">

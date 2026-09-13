@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Sentinel Flash</title>
+  <defs>
+    <linearGradient id="bg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#113d3b"/>
+      <stop offset="1" stop-color="#071c25"/>
+    </linearGradient>
+    <linearGradient id="signal" x1="14" y1="24" x2="51" y2="39" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5eeac0"/>
+      <stop offset="1" stop-color="#22c9d8"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#bg)" stroke="#2dd4a6" stroke-opacity=".4" stroke-width="2"/>
+  <path d="M32 9 50 16v14c0 11.5-7.2 20.7-18 25-10.8-4.3-18-13.5-18-25V16l18-7Z" fill="none" stroke="#5eeac0" stroke-opacity=".44" stroke-width="2.2"/>
+  <path d="M13 33h9l4.1-9.5 7.2 18L38 30h13" fill="none" stroke="url(#signal)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="51" cy="30" r="3" fill="#5eeac0"/>
+</svg>

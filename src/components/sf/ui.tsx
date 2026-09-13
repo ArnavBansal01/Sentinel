@@ -83,10 +83,10 @@ export function Panel({
   return (
     <section className={cn("panel flex min-h-0 flex-col overflow-hidden", className)}>
       {(title || actions) && (
-        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+        <header className="flex min-h-16 items-center justify-between gap-4 border-b border-border px-4 py-3.5 sm:px-5">
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-foreground">{title}</h2>
-            {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
+            <h2 className="truncate text-[15px] font-semibold tracking-tight text-foreground">{title}</h2>
+            {subtitle && <p className="mt-0.5 truncate text-xs leading-relaxed text-muted-foreground">{subtitle}</p>}
           </div>
           {actions}
         </header>
@@ -116,9 +116,9 @@ export function Metric({
           ? "text-success"
           : "text-foreground";
   return (
-    <div className="flex flex-col justify-between gap-1 border-r border-border px-4 py-3 last:border-r-0">
+    <div className="metric-card panel flex min-h-28 flex-col justify-between gap-2 p-4 sm:p-5">
       <span className="label-xs">{label}</span>
-      <span className={cn("num text-xl leading-none font-semibold", valueTone)}>{value}</span>
+      <span className={cn("num text-2xl leading-none font-semibold tracking-tight", valueTone)}>{value}</span>
       {hint && <span className="text-[11px] text-muted-foreground">{hint}</span>}
     </div>
   );
@@ -161,7 +161,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-all duration-200 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
         size === "sm" ? "h-7 px-2.5 text-xs" : "h-9 px-3.5 text-sm",
         variants[variant],
         className,

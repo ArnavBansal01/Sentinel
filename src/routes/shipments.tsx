@@ -22,8 +22,8 @@ function ShipmentsPage() {
   }), [state.shipments, query, status]);
 
   return <AppShell title="Shipments" subtitle="Search and open any shipment">
-    <div className="space-y-3 p-3">
-      <div className="panel flex flex-wrap items-center gap-2 p-3">
+    <div className="space-y-5 p-4 sm:p-5 lg:p-6">
+      <div className="panel flex flex-wrap items-center gap-3 p-4">
         <label className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><input aria-label="Search shipments" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search ID, lane, cargo, vessel…" className="h-9 w-full rounded-md border border-input bg-surface pl-9 pr-3 text-sm outline-none focus:border-primary" /></label>
         <select aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)} className="h-9 rounded-md border border-input bg-surface px-3 text-sm">
           <option value="all">All statuses</option>{[...new Set(state.shipments.map((s) => s.status))].map((value) => <option key={value} value={value}>{value.replace(/_/g, " ")}</option>)}
