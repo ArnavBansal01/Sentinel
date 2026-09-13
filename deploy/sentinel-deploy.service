@@ -1,0 +1,13 @@
+[Unit]
+Description=Deploy Sentinel Flash from GitHub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/sentinel-flash/deploy.sh
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
