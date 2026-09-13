@@ -11,6 +11,7 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
   const [note, setNote] = useState("");
   const [overrideId, setOverrideId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const decision = run.decision;
   if (!decision || run.state !== "PENDING_APPROVAL") return null;
@@ -19,10 +20,17 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
   const recommended = decision.options.find((o) => o.id === decision.recommended_option_id);
   const viable = decision.options.filter((o) => o.status === "viable");
 
-  const act = (type: "approve" | "reject" | "override") => {
+  const act = async (type: "approve" | "reject" | "override") => {
     if (submitting) return;
     setSubmitting(true);
-    resolveApproval(run.shipmentId, type, type === "override" ? overrideId : undefined, note);
+    setError("");
+    try {
+      await resolveApproval(run.shipmentId, type, type === "override" ? overrideId : undefined, note);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Approval action failed");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -30,8 +38,8 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-warning" aria-hidden />
-          <span className="text-sm font-semibold">Pending human approval</span>
-          <Badge tone="warning">Not committed</Badge>
+          <span className="text-sm font-semibold">Waiting for human review</span>
+          <Badge tone="warning">Not applied</Badge>
         </div>
         <span className="num text-[11px] text-muted-foreground">Decision {decision.id}</span>
       </div>
@@ -46,7 +54,7 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
 
       {recommended && (
         <p className="mt-2 text-xs text-muted-foreground">
-          Recommended: <span className="font-medium text-foreground">{recommended.label}</span> ·{" "}
+          Best plan: <span className="font-medium text-foreground">{recommended.label}</span> ·{" "}
           <span className="num">{usdExact(recommended.cost_usd)}</span>
         </p>
       )}
@@ -55,34 +63,33 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
         <div className="mt-3 flex items-start gap-2 rounded-md border border-border bg-surface-muted p-2.5">
           <Lock className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" aria-hidden />
           <p className="text-xs text-muted-foreground">
-            Planner role cannot approve, reject or override. This decision requires an Approver. Sign in as
-            Approver to action it.
+            A Planner can view this plan but cannot approve it. Sign in as Approver to make the final decision.
           </p>
         </div>
       ) : (
         <div className="mt-3 space-y-2.5 border-t border-border pt-3">
           <label className="block">
-            <span className="label-xs">Approver note (recorded in the ledger)</span>
+            <span className="label-xs">Review note (saved in decision history)</span>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Rationale for this human decision"
+              placeholder="Why did you make this choice?"
               className="mt-1 w-full rounded-md border border-input bg-surface px-2.5 py-1.5 text-xs outline-none focus:border-ring"
             />
           </label>
 
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="success" size="sm" disabled={submitting} onClick={() => act("approve")}>
-              Approve recommended option
+              Approve best plan
             </Button>
             <Button variant="danger" size="sm" disabled={submitting} onClick={() => act("reject")}>
-              Reject &amp; escalate
+              Reject plan
             </Button>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2.5">
             <label className="label-xs" htmlFor="override-option">
-              Override with
+              Choose another plan
             </label>
             <select
               id="override-option"
@@ -105,12 +112,13 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
               disabled={!overrideId || submitting}
               onClick={() => act("override")}
             >
-              Commit override
+              Apply this plan
             </Button>
             <span className="text-[11px] text-muted-foreground">
-              Refused options are excluded — hard constraints cannot be overridden.
+              Blocked plans cannot be selected because they break a safety rule.
             </span>
           </div>
+          {error && <p className="text-xs text-danger" role="alert">{error}</p>}
         </div>
       )}
     </div>

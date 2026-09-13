@@ -39,26 +39,26 @@ function ApproverPage() {
 
   return (
     <AppShell
-      title="Approval queue"
+      title="Review decisions"
       subtitle={
         isApprover
-          ? "Decisions held above autonomous thresholds"
-          : "Read-only — Planner role cannot action approvals"
+          ? "Plans that need a person to approve them"
+          : "View only — switch to Approver to make a decision"
       }
       actions={<Badge tone={pending.length ? "warning" : "neutral"}>{pending.length} pending</Badge>}
     >
       <div className="space-y-3 p-3">
-        <Panel title="Pending decisions" bodyClassName="overflow-x-auto">
+        <Panel title="Waiting for review" bodyClassName="overflow-x-auto">
           {pending.length === 0 ? (
             <EmptyState
               title="No decisions awaiting approval"
-              description="Decisions appear here when a hard threshold is breached — cargo value, transit time, bunker fuel or a new cold-chain custody handover."
+              description="A plan appears here when its value, delay, fuel use, or temperature risk needs a person to check it."
             />
           ) : (
             <table className="w-full min-w-[880px] text-left text-xs">
               <thead className="border-b border-border text-muted-foreground">
                 <tr>
-                  {["Shipment", "Lane", "Reason for approval", "Cargo value", "Risk", "Pending", "Recommended", ""].map(
+                  {["Shipment", "Route", "Why review is needed", "Cargo value", "Risk", "Waiting", "Best plan", ""].map(
                     (h) => (
                       <th key={h} className="px-3 py-2 font-semibold tracking-wide uppercase">
                         {h}
@@ -103,14 +103,14 @@ function ApproverPage() {
           )}
         </Panel>
 
-        <Panel title="Resolved this session" bodyClassName="overflow-x-auto">
+        <Panel title="Finished reviews" bodyClassName="overflow-x-auto">
           {resolved.length === 0 ? (
             <EmptyState title="Nothing resolved yet" />
           ) : (
             <table className="w-full min-w-[640px] text-left text-xs">
               <thead className="border-b border-border text-muted-foreground">
                 <tr>
-                  {["Shipment", "Outcome", "Actor", "Committed option"].map((h) => (
+                  {["Shipment", "Result", "Reviewed by", "Applied plan"].map((h) => (
                     <th key={h} className="px-3 py-2 font-semibold tracking-wide uppercase">
                       {h}
                     </th>

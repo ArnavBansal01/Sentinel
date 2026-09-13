@@ -11,12 +11,7 @@ export interface User {
 }
 
 export type ShipmentStatus =
-  | "on_track"
-  | "monitoring"
-  | "disrupted"
-  | "pending_approval"
-  | "recovered"
-  | "escalated";
+  "on_track" | "monitoring" | "disrupted" | "pending_approval" | "recovered" | "escalated";
 
 export interface GeoPoint {
   name: string;
@@ -51,6 +46,9 @@ export interface EvidenceSource {
   summary: string;
   confidence: number;
   simulated: boolean;
+  dataStatus?: "LIVE" | "DEMO" | "UNAVAILABLE";
+  provider?: string;
+  url?: string;
 }
 
 export interface DisruptionEvent {
@@ -136,7 +134,7 @@ export interface ActResult {
   routeRedrawn: boolean;
   partnersNotified: string[];
   ledgerRef: string;
-  simulated: true;
+  simulated: boolean;
 }
 
 export interface LedgerEntry {
@@ -160,6 +158,9 @@ export interface LedgerEntry {
     approval_reasons: string[];
     evidence: EvidenceSource[];
     approval?: ApprovalAction;
+    traceId?: string;
+    logs?: OperationalEvent[];
+    notification?: { delivery?: string; provider?: string };
   };
 }
 

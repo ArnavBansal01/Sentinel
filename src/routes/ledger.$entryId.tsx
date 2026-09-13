@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, BrainCircuit, Clock3, Lock } from "lucide-react";
 
 import { AppShell } from "@/components/sf/AppShell";
 import { DecisionComparison } from "@/components/sf/DecisionWorkspace";
@@ -20,7 +20,8 @@ export const Route = createFileRoute("/ledger/$entryId")({
       { property: "og:title", content: `Ledger entry ${params.entryId} — Sentinel Flash` },
       {
         property: "og:description",
-        content: "Full decision replay: what was known, what was considered, what was committed and by whom.",
+        content:
+          "Full decision replay: what was known, what was considered, what was committed and by whom.",
       },
     ],
   }),
@@ -51,7 +52,11 @@ function replayDecision(entry: LedgerEntry): Decision | null {
     approval_reasons: s.approval_reasons,
     refusals: s.options
       .filter((o) => o.status === "refused")
-      .map((o) => ({ optionId: o.id, reason: o.refusal_reason ?? "", constraint: o.constraint ?? "" })),
+      .map((o) => ({
+        optionId: o.id,
+        reason: o.refusal_reason ?? "",
+        constraint: o.constraint ?? "",
+      })),
   };
 }
 
@@ -65,7 +70,10 @@ function LedgerDetail() {
     return (
       <AppShell title="Ledger entry not found">
         <div className="p-6">
-          <EmptyState title="Unknown reference" description="No ledger entry matches this identifier." />
+          <EmptyState
+            title="Unknown reference"
+            description="No ledger entry matches this identifier."
+          />
         </div>
       </AppShell>
     );
@@ -76,7 +84,7 @@ function LedgerDetail() {
   return (
     <AppShell
       title={`Ledger entry ${entry.reference}`}
-      subtitle="Decision replay · read only"
+      subtitle="Full decision details · read only"
       actions={
         <Link
           to="/ledger"
@@ -90,13 +98,16 @@ function LedgerDetail() {
         <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-muted px-3 py-2">
           <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
           <span className="text-xs text-muted-foreground">
-            This record is read only. Replays reconstruct the decision exactly as committed.
+            This saved record cannot be changed. It shows exactly what the system knew and did.
           </span>
         </div>
 
         <div className="panel grid grid-cols-2 gap-y-3 px-4 py-3 md:grid-cols-3 xl:grid-cols-6">
           <Fact label="Reference" value={<span className="num text-sm">{entry.reference}</span>} />
-          <Fact label="Timestamp (UTC)" value={<span className="num text-sm">{dateTime(entry.timestampIso)}</span>} />
+          <Fact
+            label="Timestamp (UTC)"
+            value={<span className="num text-sm">{dateTime(entry.timestampIso)}</span>}
+          />
           <Fact
             label="Shipment"
             value={
@@ -115,28 +126,38 @@ function LedgerDetail() {
             value={
               <span className="text-sm">
                 {entry.actorName}{" "}
-                <span className="text-[11px] text-muted-foreground uppercase">({entry.actorType})</span>
+                <span className="text-[11px] text-muted-foreground uppercase">
+                  ({entry.actorType})
+                </span>
               </span>
             }
           />
           <Fact
-            label="Decision source"
+            label="Plan made by"
             value={
               <Badge tone={entry.decisionSource === "gemini" ? "info" : "neutral"}>
-                {entry.decisionSource === "gemini" ? "Gemini reasoning" : "Deterministic fallback"}
+                {entry.decisionSource === "gemini" ? "Gemini AI" : "Demo or backup logic"}
               </Badge>
             }
           />
         </div>
 
-        <Panel title="Decision" bodyClassName="p-3 space-y-2">
+        <Panel title="Chosen plan" bodyClassName="p-3 space-y-2">
+          <div className="flex items-center gap-2 text-success">
+            <BrainCircuit className="h-4 w-4" />
+            <span className="label-xs text-success">Why this plan was chosen</span>
+          </div>
           <p className="text-sm font-medium">{entry.decision}</p>
           <p className="text-xs leading-relaxed text-muted-foreground">{entry.rationale}</p>
           <div className="grid gap-2 pt-1 sm:grid-cols-2">
             <Fact label="Lane" value={<span className="text-sm">{entry.lane}</span>} />
             <Fact
               label="Cargo"
-              value={<span className="text-sm">{shipment ? shipment.cargo : "Not in current scope"}</span>}
+              value={
+                <span className="text-sm">
+                  {shipment ? shipment.cargo : "Not in current scope"}
+                </span>
+              }
             />
           </div>
         </Panel>
@@ -144,13 +165,15 @@ function LedgerDetail() {
         {replay ? (
           <>
             {entry.snapshot?.evidence?.length ? (
-              <Panel title="Evidence at time of decision" bodyClassName="p-3">
+              <Panel title="Data used for this decision" bodyClassName="p-3">
                 <ul className="grid gap-2 md:grid-cols-2">
                   {entry.snapshot.evidence.map((e) => (
                     <li key={e.id} className="rounded-lg border border-border bg-surface p-3">
                       <div className="flex items-center justify-between gap-2">
                         <span className="num text-[11px] text-muted-foreground">{e.connector}</span>
-                        <Badge tone="neutral">Simulated signal</Badge>
+                        <Badge tone={e.dataStatus === "LIVE" ? "success" : "warning"}>
+                          {e.dataStatus === "LIVE" ? "Live signal" : e.dataStatus === "UNAVAILABLE" ? "Unavailable" : "Demo signal"}
+                        </Badge>
                       </div>
                       <p className="mt-1 text-xs font-medium">{e.label}</p>
                       <p className="text-[11px] text-muted-foreground">
@@ -161,9 +184,34 @@ function LedgerDetail() {
                 </ul>
               </Panel>
             ) : null}
-            <Panel title="Options considered" bodyClassName="p-3">
+            <Panel title="Plans compared" bodyClassName="p-3">
               <DecisionComparison decision={replay} />
             </Panel>
+            {entry.snapshot?.logs?.length ? (
+              <Panel
+                title="Step-by-step system log"
+                subtitle={`Run ID ${entry.snapshot.traceId}`}
+                bodyClassName="p-3"
+              >
+                <ol className="space-y-2">
+                  {entry.snapshot.logs.map((log) => (
+                    <li
+                      key={log.id}
+                      className="flex gap-3 rounded-lg border border-border bg-surface-muted/50 p-3"
+                    >
+                      <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
+                      <div>
+                        <p className="text-xs font-semibold">{log.type}</p>
+                        <p className="text-[11px] text-muted-foreground">{log.message}</p>
+                        <p className="num mt-1 text-[9px] text-muted-foreground">
+                          {dateTime(log.atIso)} · {log.stage.toUpperCase()}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </Panel>
+            ) : null}
             {entry.snapshot?.approval && (
               <Panel title="Human decision" bodyClassName="p-3">
                 <p className="text-sm">
@@ -178,8 +226,8 @@ function LedgerDetail() {
         ) : (
           <Panel title="Replay" bodyClassName="p-3">
             <p className="text-xs text-muted-foreground">
-              This entry is seeded historical demo data without a retained option snapshot, so only the
-              committed summary above is available.
+              This entry is seeded historical demo data without a retained option snapshot, so only
+              the committed summary above is available.
             </p>
           </Panel>
         )}

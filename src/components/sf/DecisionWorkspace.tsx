@@ -30,9 +30,9 @@ export function DoNothingCard({ baseline }: { baseline: DoNothingBaseline }) {
   return (
     <article className="flex flex-col rounded-lg border border-dashed border-border-strong bg-surface-muted p-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="label-xs">Cost of inaction</span>
+        <span className="label-xs">If we do nothing</span>
         <Badge tone="neutral" dot={false}>
-          Baseline
+          Comparison
         </Badge>
       </div>
       <h3 className="mt-1 text-sm font-semibold">Do nothing</h3>
@@ -41,10 +41,10 @@ export function DoNothingCard({ baseline }: { baseline: DoNothingBaseline }) {
       </p>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{baseline.description}</p>
       <div className="mt-3 border-t border-border pt-2">
-        <Row label="Transit impact" value={days(baseline.days_added)} />
-        <Row label="Fuel impact" value="—" />
+        <Row label="Extra time" value={days(baseline.days_added)} />
+        <Row label="Extra fuel" value="—" />
         <Row label="Risk" value={String(baseline.risk_score)} tone={riskTone(baseline.risk_score)} />
-        <Row label="Status" value="Comparison baseline" />
+        <Row label="Status" value="Used for comparison" />
       </div>
     </article>
   );
@@ -80,19 +80,19 @@ export function RecoveryOptionCard({
         <span className="label-xs">{TYPE_LABEL[option.type]}</span>
         {refused ? (
           <Badge tone="danger" dot={false}>
-            <Ban className="h-3 w-3" /> Refused
+            <Ban className="h-3 w-3" /> Blocked
           </Badge>
         ) : committed ? (
           <Badge tone="success" dot={false}>
-            <CheckCircle2 className="h-3 w-3" /> Committed
+            <CheckCircle2 className="h-3 w-3" /> Applied
           </Badge>
         ) : recommended ? (
           <Badge tone="info" dot={false}>
-            <CircleDot className="h-3 w-3" /> Recommended
+            <CircleDot className="h-3 w-3" /> Best plan
           </Badge>
         ) : (
           <Badge tone="neutral" dot={false}>
-            <Minus className="h-3 w-3" /> Viable
+            <Minus className="h-3 w-3" /> Allowed
           </Badge>
         )}
       </div>
@@ -110,15 +110,15 @@ export function RecoveryOptionCard({
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{option.description}</p>
 
       <div className="mt-3 border-t border-border pt-2">
-        <Row label="Transit impact" value={days(option.days_added)} />
+        <Row label="Extra time" value={days(option.days_added)} />
         <Row
-          label="Fuel impact"
+          label="Extra fuel"
           value={`${option.fuel_pct}% · ${Math.round(option.fuel_tonnes)} t`}
         />
         <Row label="Risk" value={String(option.risk_score)} tone={riskTone(option.risk_score)} />
         <Row
           label="Status"
-          value={refused ? "Refused — hard constraint" : committed ? "Committed" : "Viable"}
+          value={refused ? "Blocked by safety rule" : committed ? "Applied" : "Allowed"}
           tone={refused ? "text-danger" : committed ? "text-success" : undefined}
         />
       </div>
@@ -128,12 +128,12 @@ export function RecoveryOptionCard({
           <div className="flex items-center gap-1.5">
             <Ban className="h-3.5 w-3.5 text-danger" aria-hidden />
             <span className="text-[11px] font-bold tracking-wide text-danger uppercase">
-              System refusal · {option.constraint}
+              Blocked for safety · {option.constraint}
             </span>
           </div>
           <p className="mt-1 text-[11px] leading-snug text-danger">{option.refusal_reason}</p>
           <p className="mt-1.5 text-[10px] text-danger/80">
-            Enforced by the application, not by the model. This option cannot be committed or overridden.
+            The safety rules blocked this plan. Even the AI or an approver cannot force it through.
           </p>
         </div>
       )}

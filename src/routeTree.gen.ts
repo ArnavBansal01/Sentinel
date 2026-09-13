@@ -11,9 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApproverRouteImport } from './routes/approver'
+import { Route as IntegrityRouteImport } from './routes/integrity'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PlannerRouteImport } from './routes/planner'
-import { Route as ApiDecideRouteImport } from './routes/api/decide'
+import { Route as ScenariosRouteImport } from './routes/scenarios'
+import { Route as ShipmentsRouteImport } from './routes/shipments'
 import { Route as LedgerIndexRouteImport } from './routes/ledger.index'
 import { Route as LedgerEntryIdRouteImport } from './routes/ledger.$entryId'
 import { Route as ShipmentIdRouteImport } from './routes/shipment.$id'
@@ -28,6 +30,11 @@ const ApproverRoute = ApproverRouteImport.update({
   path: '/approver',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IntegrityRoute = IntegrityRouteImport.update({
+  id: '/integrity',
+  path: '/integrity',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -38,9 +45,14 @@ const PlannerRoute = PlannerRouteImport.update({
   path: '/planner',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiDecideRoute = ApiDecideRouteImport.update({
-  id: '/api/decide',
-  path: '/api/decide',
+const ScenariosRoute = ScenariosRouteImport.update({
+  id: '/scenarios',
+  path: '/scenarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShipmentsRoute = ShipmentsRouteImport.update({
+  id: '/shipments',
+  path: '/shipments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LedgerIndexRoute = LedgerIndexRouteImport.update({
@@ -62,9 +74,11 @@ const ShipmentIdRoute = ShipmentIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/approver': typeof ApproverRoute
+  '/integrity': typeof IntegrityRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
-  '/api/decide': typeof ApiDecideRoute
+  '/scenarios': typeof ScenariosRoute
+  '/shipments': typeof ShipmentsRoute
   '/ledger/$entryId': typeof LedgerEntryIdRoute
   '/shipment/$id': typeof ShipmentIdRoute
   '/ledger/': typeof LedgerIndexRoute
@@ -72,9 +86,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/approver': typeof ApproverRoute
+  '/integrity': typeof IntegrityRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
-  '/api/decide': typeof ApiDecideRoute
+  '/scenarios': typeof ScenariosRoute
+  '/shipments': typeof ShipmentsRoute
   '/ledger/$entryId': typeof LedgerEntryIdRoute
   '/shipment/$id': typeof ShipmentIdRoute
   '/ledger': typeof LedgerIndexRoute
@@ -83,9 +99,11 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/approver': typeof ApproverRoute
+  '/integrity': typeof IntegrityRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
-  '/api/decide': typeof ApiDecideRoute
+  '/scenarios': typeof ScenariosRoute
+  '/shipments': typeof ShipmentsRoute
   '/ledger/$entryId': typeof LedgerEntryIdRoute
   '/shipment/$id': typeof ShipmentIdRoute
   '/ledger/': typeof LedgerIndexRoute
@@ -95,9 +113,11 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/approver'
+    | '/integrity'
     | '/login'
     | '/planner'
-    | '/api/decide'
+    | '/scenarios'
+    | '/shipments'
     | '/ledger/$entryId'
     | '/shipment/$id'
     | '/ledger/'
@@ -105,9 +125,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/approver'
+    | '/integrity'
     | '/login'
     | '/planner'
-    | '/api/decide'
+    | '/scenarios'
+    | '/shipments'
     | '/ledger/$entryId'
     | '/shipment/$id'
     | '/ledger'
@@ -115,9 +137,11 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/approver'
+    | '/integrity'
     | '/login'
     | '/planner'
-    | '/api/decide'
+    | '/scenarios'
+    | '/shipments'
     | '/ledger/$entryId'
     | '/shipment/$id'
     | '/ledger/'
@@ -126,9 +150,11 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApproverRoute: typeof ApproverRoute
+  IntegrityRoute: typeof IntegrityRoute
   LoginRoute: typeof LoginRoute
   PlannerRoute: typeof PlannerRoute
-  ApiDecideRoute: typeof ApiDecideRoute
+  ScenariosRoute: typeof ScenariosRoute
+  ShipmentsRoute: typeof ShipmentsRoute
   LedgerEntryIdRoute: typeof LedgerEntryIdRoute
   ShipmentIdRoute: typeof ShipmentIdRoute
   LedgerIndexRoute: typeof LedgerIndexRoute
@@ -150,6 +176,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApproverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/integrity': {
+      id: '/integrity'
+      path: '/integrity'
+      fullPath: '/integrity'
+      preLoaderRoute: typeof IntegrityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -164,11 +197,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlannerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/decide': {
-      id: '/api/decide'
-      path: '/api/decide'
-      fullPath: '/api/decide'
-      preLoaderRoute: typeof ApiDecideRouteImport
+    '/scenarios': {
+      id: '/scenarios'
+      path: '/scenarios'
+      fullPath: '/scenarios'
+      preLoaderRoute: typeof ScenariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shipments': {
+      id: '/shipments'
+      path: '/shipments'
+      fullPath: '/shipments'
+      preLoaderRoute: typeof ShipmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ledger/': {
@@ -198,9 +238,11 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApproverRoute: ApproverRoute,
+  IntegrityRoute: IntegrityRoute,
   LoginRoute: LoginRoute,
   PlannerRoute: PlannerRoute,
-  ApiDecideRoute: ApiDecideRoute,
+  ScenariosRoute: ScenariosRoute,
+  ShipmentsRoute: ShipmentsRoute,
   LedgerEntryIdRoute: LedgerEntryIdRoute,
   ShipmentIdRoute: ShipmentIdRoute,
   LedgerIndexRoute: LedgerIndexRoute,

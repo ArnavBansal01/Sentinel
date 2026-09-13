@@ -12,12 +12,12 @@ export function ActionResultPanel({ run }: { run: WorkflowRun }) {
         <div className="flex items-center gap-2">
           <TriangleAlert className="h-4 w-4 text-warning" aria-hidden />
           <span className="text-sm font-semibold text-warning">
-            Recommendation rejected — nothing committed
+            Plan rejected — nothing changed
           </span>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           Escalated by {run.approval?.actorName} at {run.approval ? dateTime(run.approval.atIso) : "—"}. The
-          shipment remains on its original routing pending commercial review.
+          shipment stays on its original route and has been sent for review.
         </p>
         {run.approval?.note && (
           <p className="mt-1 text-xs text-muted-foreground">Reason: {run.approval.note}</p>
@@ -39,10 +39,10 @@ export function ActionResultPanel({ run }: { run: WorkflowRun }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-success" aria-hidden />
-          <span className="text-sm font-semibold">Decision committed</span>
-          <Badge tone="success">{run.state === "AUTO_COMMITTED" ? "Auto-committed" : "Committed"}</Badge>
+          <span className="text-sm font-semibold">Plan applied</span>
+          <Badge tone="success">{run.state === "AUTO_COMMITTED" ? "Applied automatically" : "Applied"}</Badge>
         </div>
-        <DemoTag>Simulated action</DemoTag>
+        {act.simulated ? <DemoTag>Message delivery is demo</DemoTag> : <Badge tone="success">Live action saved</Badge>}
       </div>
 
       <p className="mt-1.5 text-xs text-foreground">{act.committedLabel}</p>
@@ -53,19 +53,19 @@ export function ActionResultPanel({ run }: { run: WorkflowRun }) {
           <dd className="num font-medium">{actor}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-muted-foreground">Executed</dt>
+          <dt className="text-muted-foreground">Applied at</dt>
           <dd className="num">{dateTime(act.executedAtIso)}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-muted-foreground">Route redrawn</dt>
-          <dd>{act.routeRedrawn ? "Yes (simulated)" : "No"}</dd>
+          <dt className="text-muted-foreground">Route updated</dt>
+          <dd>{act.routeRedrawn ? "Yes — shipment state updated" : "No"}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-muted-foreground">Partners notified</dt>
-          <dd className="text-right">{act.partnersNotified.join(", ")} (simulated)</dd>
+          <dt className="text-muted-foreground">Message status</dt>
+          <dd className="text-right">{act.partnersNotified.join(", ") || "None"}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-muted-foreground">Ledger reference</dt>
+          <dt className="text-muted-foreground">Decision record</dt>
           <dd className="num font-medium">
             <Link to="/ledger" className="underline underline-offset-2 hover:text-primary">
               {act.ledgerRef}

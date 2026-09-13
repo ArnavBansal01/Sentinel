@@ -1,32 +1,26 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
-  useReducer,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
-
-import { senseShipment } from "./connectors";
 import { DEMO_USERS, SEED_ACTIVITY, SEED_LEDGER, SEED_SHIPMENTS } from "./seed";
 import type {
   ActResult,
   ApprovalActionType,
   Decision,
+  DisruptionEvent,
   LedgerEntry,
   OperationalEvent,
   Role,
   Shipment,
-  ShipmentStatus,
   User,
   WorkflowRun,
 } from "./types";
-
-/* ----------------------------------------------------------------- state */
-
 interface SFState {
   user: User | null;
   shipments: Shipment[];
@@ -34,435 +28,246 @@ interface SFState {
   ledger: LedgerEntry[];
   activity: OperationalEvent[];
   generation: number;
+  systemStatus: SystemStatus;
+  lastError: string | null;
 }
-
-function initialState(): SFState {
-  return {
-    user: null,
-    shipments: structuredClone(SEED_SHIPMENTS),
-    runs: {},
-    ledger: structuredClone(SEED_LEDGER),
-    activity: structuredClone(SEED_ACTIVITY),
-    generation: 0,
-  };
+export interface SystemStatus {
+  backend: "checking" | "healthy" | "unavailable";
+  mode: "LIVE" | "DEMO" | "UNKNOWN";
+  gemini: string;
+  news: string;
+  weather: string;
+  ais: string;
+  port: string;
+  database: string;
 }
-
-type Action =
-  | { type: "login"; user: User }
-  | { type: "logout" }
-  | { type: "reset" }
-  | { type: "run/start"; run: WorkflowRun }
-  | { type: "run/patch"; shipmentId: string; generation: number; patch: Partial<WorkflowRun> }
-  | { type: "shipment/status"; shipmentId: string; status: ShipmentStatus; risk?: number | undefined }
-  | { type: "activity"; event: OperationalEvent }
-  | { type: "ledger/append"; entry: LedgerEntry };
-
-function reducer(state: SFState, action: Action): SFState {
-  switch (action.type) {
-    case "login":
-      return { ...state, user: action.user };
-    case "logout":
-      return { ...state, user: null };
-    case "reset":
-      return { ...initialState(), user: state.user, generation: state.generation + 1 };
-    case "run/start":
-      return { ...state, runs: { ...state.runs, [action.run.shipmentId]: action.run } };
-    case "run/patch": {
-      const run = state.runs[action.shipmentId];
-      // Stale-response protection: ignore anything from a superseded generation.
-      if (!run || action.generation !== state.generation || run.version !== action.patch.version) {
-        if (!run || action.generation !== state.generation) return state;
-      }
-      return {
-        ...state,
-        runs: { ...state.runs, [action.shipmentId]: { ...run, ...action.patch, version: run.version } },
-      };
-    }
-    case "shipment/status":
-      return {
-        ...state,
-        shipments: state.shipments.map((s) =>
-          s.id === action.shipmentId
-            ? { ...s, status: action.status, riskScore: action.risk ?? s.riskScore }
-            : s,
-        ),
-      };
-    case "activity":
-      return { ...state, activity: [action.event, ...state.activity].slice(0, 60) };
-    case "ledger/append":
-      if (state.ledger.some((e) => e.reference === action.entry.reference)) return state;
-      return { ...state, ledger: [action.entry, ...state.ledger] };
-    default:
-      return state;
-  }
-}
-
-/* --------------------------------------------------------------- context */
-
 interface SFContextValue {
   state: SFState;
   ready: boolean;
-  login: (role: Role) => void;
+  login: (r: Role) => void;
   logout: () => void;
   reset: () => void;
-  triggerScenario: (shipmentId: string) => Promise<void>;
-  resolveApproval: (shipmentId: string, action: ApprovalActionType, optionId?: string, note?: string) => void;
-  isBusy: (shipmentId: string) => boolean;
+  triggerScenario: (id: string, showcaseDemo?: boolean) => Promise<void>;
+  resolveApproval: (id: string, a: ApprovalActionType, o?: string, n?: string) => Promise<void>;
+  isBusy: (id: string) => boolean;
 }
-
-const SFContext = createContext<SFContextValue | null>(null);
-
-const STORAGE_KEY = "sf.session.role";
-
+const Context = createContext<SFContextValue | null>(null),
+  STORAGE_KEY = "sf.session.role",
+  API = import.meta.env["VITE_API_BASE_URL"] ?? "http://localhost:8787";
+const initial = (): SFState => ({
+  user: null,
+  shipments: structuredClone(SEED_SHIPMENTS),
+  runs: {},
+  ledger: [],
+  activity: [],
+  generation: 0,
+  systemStatus: {
+    backend: "checking",
+    mode: "UNKNOWN",
+    gemini: "checking",
+    news: "checking",
+    weather: "checking",
+    ais: "checking",
+    port: "checking",
+    database: "checking",
+  },
+  lastError: null,
+});
 export function SentinelProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  const [state, setState] = useState(initial);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [ready, setReady] = useState(false);
-  const generationRef = useRef(0);
-  const inflight = useRef<Record<string, AbortController>>({});
-
   useEffect(() => {
-    try {
-      const stored = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
-      if (stored === "planner" || stored === "approver") {
-        const user = DEMO_USERS.find((u) => u.role === stored);
-        if (user) dispatch({ type: "login", user });
-      }
-    } catch (e) {
-      console.warn("Unable to access localStorage for session role", e);
+    const role = localStorage.getItem(STORAGE_KEY) as Role | null;
+    if (role) {
+      const user = DEMO_USERS.find((u) => u.role === role);
+      if (user) setState((s) => ({ ...s, user }));
     }
-    setReady(true);
+    Promise.all([
+      fetch(`${API}/api/shipments`).then((r) => r.json()),
+      fetch(`${API}/api/activity`).then((r) => r.json()),
+      fetch(`${API}/api/health`).then((r) => r.json()),
+      fetch(`${API}/api/ledger`).then((r) => r.json()),
+      fetch(`${API}/api/workflows`).then((r) => r.json()),
+    ])
+      .then(([shipments, events, systemStatus, ledger, workflows]) =>
+        setState((s) => ({
+          ...s,
+          shipments: mergeShipments(shipments as Shipment[]),
+          systemStatus,
+          activity: systemStatus.mode === "DEMO"
+            ? [...(events as BackendEvent[]).map(mapEvent), ...SEED_ACTIVITY]
+            : [],
+          ledger: [
+            ...(ledger as any[]).map(mapBackendLedger),
+            ...(systemStatus.mode === "DEMO" ? SEED_LEDGER : []),
+          ],
+          runs: Object.fromEntries((workflows as any[]).map((workflow) => {
+            const run = mapRun(workflow);
+            if (workflow.persistedState === "ESCALATED") run.state = "REJECTED_ESCALATED";
+            return [run.shipmentId, run];
+          })),
+        })),
+      )
+      .catch(() =>
+        setState((s) => ({ ...s, systemStatus: { ...s.systemStatus, backend: "unavailable" } })),
+      )
+      .finally(() => setReady(true));
+    const es = new EventSource(`${API}/api/events/stream`);
+    es.addEventListener("activity", (e) => {
+      const event = mapEvent(JSON.parse((e as MessageEvent).data));
+      setState((s) => ({
+        ...s,
+        activity: [event, ...s.activity.filter((x) => x.id !== event.id)].slice(0, 200),
+      }));
+    });
+    const healthPoll = window.setInterval(() => {
+      fetch(`${API}/api/health`)
+        .then((r) => r.json())
+        .then((systemStatus) => setState((s) => ({ ...s, systemStatus })))
+        .catch(() =>
+          setState((s) => ({ ...s, systemStatus: { ...s.systemStatus, backend: "unavailable" } })),
+        );
+    }, 3000);
+    return () => {
+      es.close();
+      window.clearInterval(healthPoll);
+    };
   }, []);
-
-  const emit = useCallback(
-    (event: Omit<OperationalEvent, "id" | "atIso"> & { atIso?: string }) => {
-      dispatch({
-        type: "activity",
-        event: {
-          id: `OE-${Math.random().toString(36).slice(2, 10)}`,
-          atIso: event.atIso ?? new Date().toISOString(),
-          ...event,
-        },
-      });
-    },
-    [],
-  );
-
   const login = useCallback((role: Role) => {
     const user = DEMO_USERS.find((u) => u.role === role);
-    if (!user) return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, role);
-    } catch (e) {
-      console.warn("Unable to save session role to localStorage", e);
+    if (user) {
+      localStorage.setItem(STORAGE_KEY, role);
+      setState((s) => ({ ...s, user }));
     }
-    dispatch({ type: "login", user });
   }, []);
-
   const logout = useCallback(() => {
-    try {
-      window.localStorage.removeItem(STORAGE_KEY);
-    } catch (e) {
-      console.warn("Unable to remove session role from localStorage", e);
-    }
-    dispatch({ type: "logout" });
+    localStorage.removeItem(STORAGE_KEY);
+    setState((s) => ({ ...s, user: null }));
   }, []);
-
-  const reset = useCallback(() => {
-    generationRef.current += 1;
-    Object.values(inflight.current).forEach((c) => c.abort());
-    inflight.current = {};
-    setBusy({});
-    dispatch({ type: "reset" });
-  }, []);
-
+  const reset = useCallback(
+    () => setState((s) => ({
+      ...initial(), user: s.user, shipments: s.shipments, systemStatus: s.systemStatus,
+      generation: s.generation + 1,
+    })),
+    [],
+  );
   const triggerScenario = useCallback(
-    async (shipmentId: string) => {
-      if (inflight.current[shipmentId]) return; // duplicate-trigger protection
-      const generation = generationRef.current;
-      const controller = new AbortController();
-      inflight.current[shipmentId] = controller;
-      setBusy((b) => ({ ...b, [shipmentId]: true }));
-
-      const requestId = `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-      const disruption = senseShipment(shipmentId);
-
+    async (id: string, showcaseDemo = false) => {
+      if (busy[id]) return;
+      setBusy((b) => ({ ...b, [id]: true }));
+      setState((s) => ({ ...s, lastError: null }));
+      const requestId = crypto.randomUUID();
       try {
-        if (!disruption) throw new Error("No disruption signal is seeded for this shipment.");
-
-        const run: WorkflowRun = {
-          shipmentId,
-          requestId,
-          version: generation,
-          state: "DISRUPTION_DETECTED",
-          startedAtIso: new Date().toISOString(),
-          disruption,
-          decision: null,
-          approval: null,
-          act: null,
-          error: null,
-        };
-        dispatch({ type: "run/start", run });
-        dispatch({ type: "shipment/status", shipmentId, status: "disrupted" });
-        emit({
-          stage: "sense",
-          type: "Disruption detected",
-          shipmentId,
-          message: `${disruption.title}`,
-          status: "warning",
-        });
-        emit({
-          stage: "sense",
-          type: "Source verification",
-          shipmentId,
-          message: `${disruption.sources.length} seeded sources correlated; AIS confirmation present.`,
-          status: disruption.verified ? "success" : "warning",
-        });
-
-        dispatch({
-          type: "run/patch",
-          shipmentId,
-          generation,
-          patch: { state: "SENSE_COMPLETE", version: generation },
-        });
-        dispatch({
-          type: "run/patch",
-          shipmentId,
-          generation,
-          patch: { state: "DECISION_GENERATING", version: generation },
-        });
-        emit({
-          stage: "decide",
-          type: "Decision requested",
-          shipmentId,
-          message: "Recovery option set requested from the decision engine.",
-          status: "info",
-        });
-
-        const res = await fetch("/api/decide", {
+        const r = await fetch(`${API}/api/${showcaseDemo ? "demo/" : ""}orchestrate/${id}`, {
           method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ shipmentId, requestId }),
-          signal: controller.signal,
+          headers: { "content-type": "application/json", "idempotency-key": requestId },
+          body: JSON.stringify({ requestId }),
         });
-        if (!res.ok) throw new Error("Decision service returned an error.");
-        const payload = (await res.json()) as { decision: Decision };
-        const decision = payload.decision;
-
-        if (generationRef.current !== generation) return; // stale after reset
-
-        emit({
-          stage: "validate",
-          type: "Constraint check",
-          shipmentId,
-          message:
-            decision.refusals.length > 0
-              ? `${decision.refusals.length} option refused — ${decision.refusals[0]?.constraint}.`
-              : "No hard constraint engaged; all options passed validation.",
-          status: decision.refusals.length > 0 ? "danger" : "success",
-        });
-
-        dispatch({
-          type: "run/patch",
-          shipmentId,
-          generation,
-          patch: { state: "DECISION_READY", decision, version: generation },
-        });
-
-        if (decision.overall_status === "PENDING_APPROVAL") {
-          dispatch({
-            type: "run/patch",
-            shipmentId,
-            generation,
-            patch: { state: "PENDING_APPROVAL", decision, version: generation },
-          });
-          dispatch({ type: "shipment/status", shipmentId, status: "pending_approval" });
-          emit({
-            stage: "decide",
-            type: "Approval required",
-            shipmentId,
-            message: decision.approval_reasons[0] ?? "Human approval threshold breached.",
-            status: "warning",
-          });
-          return;
-        }
-
-        // Rule C — autonomous commit.
-        const committed = decision.options.find((o) => o.id === decision.committed_option_id) ?? null;
-        const act = buildAct(decision, committed?.label ?? "Do nothing (baseline retained)");
-        dispatch({
-          type: "run/patch",
-          shipmentId,
-          generation,
-          patch: { state: "AUTO_COMMITTED", decision, act, version: generation },
-        });
-        dispatch({ type: "shipment/status", shipmentId, status: "recovered", risk: committed?.risk_score });
-        emit({
-          stage: "act",
-          type: "Decision committed",
-          shipmentId,
-          message: `${act.committedLabel} — committed autonomously.`,
-          status: "success",
-        });
-        appendLedger(dispatch, {
-          decision,
-          shipment: findShipment(state.shipments, shipmentId),
-          status: "AUTO_COMMITTED",
-          actorType: "system",
-          actorName: "SYSTEM / AUTONOMOUS",
-          decisionLabel: act.committedLabel,
-          reference: act.ledgerRef,
-          evidence: disruption.sources,
-        });
-        emit({
-          stage: "ledger",
-          type: "Ledger updated",
-          shipmentId,
-          message: `Entry ${act.ledgerRef} written to the decision ledger.`,
-          status: "info",
-        });
-      } catch (error) {
-        if (controller.signal.aborted || generationRef.current !== generation) return;
-        dispatch({
-          type: "run/patch",
-          shipmentId,
-          generation,
-          patch: {
-            state: "ERROR",
-            error:
-              error instanceof Error && error.message
-                ? error.message
-                : "The decision workflow could not be completed.",
-            version: generation,
+        const p = await r.json();
+        if (!r.ok) throw new Error(p.message ?? p.error);
+        const run = mapRun(p);
+        const persistedLedger = p.action
+          ? await fetch(`${API}/api/ledger`).then((response) => response.json())
+          : null;
+        setState((s) => ({
+          ...s,
+          runs: { ...s.runs, [id]: run },
+          shipments: s.shipments.map((x) => (x.id === id ? p.shipment : x)),
+          ledger: persistedLedger
+            ? [...(persistedLedger as any[]).map(mapBackendLedger), ...(s.systemStatus.mode === "DEMO" ? SEED_LEDGER : [])]
+            : s.ledger,
+        }));
+      } catch (e) {
+        setState((s) => ({
+          ...s,
+          runs: {
+            ...s.runs,
+            [id]: {
+              shipmentId: id,
+              requestId,
+              version: 0,
+              state: "ERROR",
+              startedAtIso: new Date().toISOString(),
+              disruption: emptyDisruption(id),
+              decision: null,
+              approval: null,
+              act: null,
+              error: e instanceof Error ? e.message : "Workflow failed",
+            },
           },
-        });
-        emit({
-          stage: "decide",
-          type: "Workflow error",
-          shipmentId,
-          message: "Decision unavailable — no state was committed.",
-          status: "danger",
-        });
+          lastError: e instanceof Error ? e.message : "Workflow failed",
+        }));
       } finally {
-        delete inflight.current[shipmentId];
-        setBusy((b) => ({ ...b, [shipmentId]: false }));
+        setBusy((b) => ({ ...b, [id]: false }));
       }
     },
-    [emit, state.shipments],
+    [busy],
   );
-
   const resolveApproval = useCallback(
-    (shipmentId: string, action: ApprovalActionType, optionId?: string, note?: string) => {
-      const run = state.runs[shipmentId];
-      const user = state.user;
-      if (!run || !run.decision || !user || user.role !== "approver") return;
-      if (run.state !== "PENDING_APPROVAL") return; // double-approval protection
-
-      const decision = run.decision;
-      const generation = generationRef.current;
-      const nowIso = new Date().toISOString();
-      const shipment = findShipment(state.shipments, shipmentId);
-
-      const approval = {
-        type: action,
-        actorId: user.id,
-        actorName: `${user.name} (Approver)`,
-        atIso: nowIso,
-        note: note ?? "",
-        ...(optionId ? { selectedOptionId: optionId } : {}),
-      };
-
-      if (action === "reject") {
-        dispatch({
-          type: "run/patch",
-          shipmentId,
-          generation,
-          patch: {
-            state: "REJECTED_ESCALATED",
-            approval,
-            decision: { ...decision, overall_status: "REJECTED_ESCALATED", committed_option_id: null },
-            version: generation,
-          },
+    async (id: string, action: ApprovalActionType, optionId?: string, note?: string) => {
+        const user = state.user;
+        if (user?.role !== "approver") throw new Error("Approver role is required.");
+        setState((s) => ({ ...s, lastError: null }));
+        const endpoint = action === "approve" ? "approval" : action;
+        const r = await fetch(`${API}/api/${endpoint}/${id}`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-user-role": user.role },
+          body: JSON.stringify({ optionId, note }),
         });
-        dispatch({ type: "shipment/status", shipmentId, status: "escalated" });
-        const ref = `ESC-${randomRef()}`;
-        emit({
-          stage: "act",
-          type: "Decision rejected",
-          shipmentId,
-          message: `Recommendation rejected by ${approval.actorName}; escalated. Nothing committed.`,
-          status: "warning",
+        const p = await r.json();
+        if (!r.ok) {
+          const message = p.message ?? p.error ?? "Approval action failed";
+          setState((s) => ({ ...s, lastError: message }));
+          throw new Error(message);
+        }
+        const persistedLedger = await fetch(`${API}/api/ledger`).then((response) =>
+          response.json(),
+        );
+        setState((s) => {
+          const old = s.runs[id];
+          if (!old) return s;
+          if (action === "reject")
+            return {
+              ...s,
+              runs: {
+                ...s.runs,
+                [id]: {
+                  ...old,
+                  state: "REJECTED_ESCALATED",
+                  approval: {
+                    type: action,
+                    actorId: user.id,
+                    actorName: user.name,
+                    atIso: new Date().toISOString(),
+                    note: note ?? "",
+                  },
+                },
+              },
+              shipments: s.shipments.map((x) => (x.id === id ? p.shipment : x)),
+              ledger: [...(persistedLedger as any[]).map(mapBackendLedger), ...(s.systemStatus.mode === "DEMO" ? SEED_LEDGER : [])],
+            };
+          const decision = {
+            ...old.decision!,
+            committed_option_id: optionId ?? old.decision!.recommended_option_id,
+            overall_status: action === "approve" ? "APPROVED_COMMITTED" : "OVERRIDDEN_COMMITTED",
+          } as Decision;
+          return {
+            ...s,
+            runs: {
+              ...s.runs,
+              [id]: { ...old, state: decision.overall_status, decision, act: mapAct(p) },
+            },
+            shipments: s.shipments.map((x) => (x.id === id ? p.shipment : x)),
+            ledger: persistedLedger
+              ? [...(persistedLedger as any[]).map(mapBackendLedger), ...(s.systemStatus.mode === "DEMO" ? SEED_LEDGER : [])]
+              : [mapLedger(p), ...s.ledger],
+          };
         });
-        appendLedger(dispatch, {
-          decision: { ...decision, overall_status: "REJECTED_ESCALATED", committed_option_id: null },
-          shipment,
-          status: "REJECTED_ESCALATED",
-          actorType: "human",
-          actorName: approval.actorName,
-          decisionLabel: "Rejected — no option committed, escalated",
-          reference: ref,
-          evidence: run.disruption.sources,
-          approval,
-        });
-        return;
-      }
-
-      const targetId = action === "override" ? optionId : decision.recommended_option_id;
-      const target = decision.options.find((o) => o.id === targetId);
-      // Hard constraints cannot be overridden.
-      if (!target || target.status === "refused") return;
-
-      const status = action === "override" ? "OVERRIDDEN_COMMITTED" : "APPROVED_COMMITTED";
-      const committedDecision: Decision = {
-        ...decision,
-        overall_status: status,
-        committed_option_id: target.id,
-      };
-      const act = buildAct(committedDecision, target.label);
-      dispatch({
-        type: "run/patch",
-        shipmentId,
-        generation,
-        patch: {
-          state: status,
-          approval,
-          decision: committedDecision,
-          act,
-          version: generation,
-        },
-      });
-      dispatch({ type: "shipment/status", shipmentId, status: "recovered", risk: target.risk_score });
-      emit({
-        stage: "act",
-        type: action === "override" ? "Human override committed" : "Approved and committed",
-        shipmentId,
-        message: `${target.label} — committed by ${approval.actorName}.`,
-        status: "success",
-      });
-      appendLedger(dispatch, {
-        decision: committedDecision,
-        shipment,
-        status,
-        actorType: "human",
-        actorName: approval.actorName,
-        decisionLabel:
-          action === "override" ? `Override — ${target.label}` : target.label,
-        reference: act.ledgerRef,
-        evidence: run.disruption.sources,
-        approval,
-      });
-      emit({
-        stage: "ledger",
-        type: "Ledger updated",
-        shipmentId,
-        message: `Entry ${act.ledgerRef} written to the decision ledger.`,
-        status: "info",
-      });
     },
-    [emit, state.runs, state.shipments, state.user],
+    [state.user],
   );
-
-  const value = useMemo<SFContextValue>(
+  const value = useMemo(
     () => ({
       state,
       ready,
@@ -471,81 +276,291 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       reset,
       triggerScenario,
       resolveApproval,
-      isBusy: (id: string) => Boolean(busy[id]),
+      isBusy: (id: string) => !!busy[id],
     }),
     [state, ready, login, logout, reset, triggerScenario, resolveApproval, busy],
   );
-
-  return <SFContext.Provider value={value}>{children}</SFContext.Provider>;
+  return <Context.Provider value={value}>{children}</Context.Provider>;
 }
-
-export function useSentinel(): SFContextValue {
-  const ctx = useContext(SFContext);
-  if (!ctx) throw new Error("useSentinel must be used inside SentinelProvider");
-  return ctx;
+function mergeShipments(backend: Shipment[]): Shipment[] {
+  const byId = new Map(backend.map((shipment) => [shipment.id, shipment]));
+  const network = SEED_SHIPMENTS.map((seeded) => byId.get(seeded.id) ?? seeded);
+  const known = new Set(network.map((shipment) => shipment.id));
+  return [...network, ...backend.filter((shipment) => !known.has(shipment.id))];
 }
-
-/* --------------------------------------------------------------- helpers */
-
-function findShipment(shipments: Shipment[], id: string): Shipment {
-  const s = shipments.find((x) => x.id === id) ?? SEED_SHIPMENTS.find((x) => x.id === id);
-  if (!s) throw new Error(`Unknown shipment ${id}`);
-  return s;
+export function useSentinel() {
+  const c = useContext(Context);
+  if (!c) throw new Error("useSentinel must be used inside SentinelProvider");
+  return c;
 }
-
-function randomRef(): string {
-  return Math.random().toString(16).slice(2, 8).toUpperCase();
-}
-
-function buildAct(decision: Decision, label: string): ActResult {
+type BackendEvent = {
+  id: string;
+  timestamp: string;
+  agent: string;
+  eventType: string;
+  shipmentId: string;
+  message: string;
+};
+function mapEvent(e: BackendEvent): OperationalEvent {
   return {
-    committedOptionId: decision.committed_option_id ?? "do-nothing",
-    committedLabel: label,
+    id: e.id,
+    atIso: e.timestamp,
+    stage: e.agent === "policy" ? "validate" : (e.agent as OperationalEvent["stage"]),
+    type: e.eventType,
+    shipmentId: e.shipmentId,
+    message: e.message,
+    status:
+      e.eventType.includes("refusal") || e.eventType.includes("detected")
+        ? "warning"
+        : e.eventType.includes("completed") || e.eventType.includes("updated")
+          ? "success"
+          : "info",
+  };
+}
+function emptyDisruption(id: string): DisruptionEvent {
+  return {
+    id: "",
+    shipmentId: id,
+    title: "Workflow failed",
+    category: "error",
+    detectedAtIso: new Date().toISOString(),
+    location: "",
+    summary: "",
+    verified: false,
+    sources: [],
+  };
+}
+function mapRun(p: any): WorkflowRun {
+  const d = p.disruption;
+  if (!p.decision) {
+    return {
+      shipmentId: p.shipment.id,
+      requestId: p.requestId,
+      version: 0,
+      state: "SENSE_COMPLETE",
+      startedAtIso: d.detectedAt,
+      disruption: mapDisruption(d),
+      decision: null,
+      approval: null,
+      act: null,
+      error: null,
+    };
+  }
+  const bd = p.decision;
+  const mappedStatus = mapDecisionStatus(bd.overallStatus, Boolean(p.action));
+  const decision: Decision = {
+    id: bd.id,
+    requestId: bd.requestId,
+    shipmentId: bd.shipmentId,
+    generatedAtIso: bd.createdAt,
+    source: bd.provider === "gemini" ? "gemini" : "fallback",
+    sourceNote: bd.providerStatus,
+    options: bd.options.map((o: any) => ({
+      id: o.id,
+      type: o.type === "switch_mode" ? "switch_mode" : o.type,
+      label: o.type.replace("_", " "),
+      description: o.reason,
+      cost_usd: o.costUsd,
+      days_added: o.delayDays,
+      fuel_pct: 0,
+      fuel_tonnes: o.fuelTonnes,
+      risk_score: o.riskScore,
+      status: o.status,
+      refusal_reason: o.policyReasons[0],
+      constraint: o.policyReasons[0],
+    })),
+    do_nothing: {
+      cost_usd: bd.doNothing.costUsd,
+      days_added: bd.doNothing.delayDays,
+      risk_score: bd.doNothing.riskScore,
+      description: bd.doNothing.reason,
+    },
+    recommended_option_id: bd.recommendedOption,
+    committed_option_id: p.action ? bd.recommendedOption : null,
+    overall_status: mappedStatus,
+    rationale: bd.reasoning,
+    constraint_analysis: bd.policyRulesTriggered.length
+      ? bd.policyRulesTriggered
+      : ["All deterministic policy rules evaluated."],
+    approval_reasons: bd.policyRulesTriggered,
+    refusals: bd.options
+      .filter((o: any) => o.status === "refused")
+      .map((o: any) => ({ optionId: o.id, reason: o.policyReasons[0], constraint: "cold-chain" })),
+  };
+  return {
+    shipmentId: p.shipment.id,
+    requestId: p.requestId,
+    version: 0,
+    state: mappedStatus,
+    startedAtIso: d.detectedAt,
+    disruption: mapDisruption(d),
+    decision,
+    approval: null,
+    act: p.action ? mapAct(p.action) : null,
+    error: null,
+  };
+}
+
+function mapDisruption(d: any): DisruptionEvent {
+  return {
+      id: d.eventId,
+      shipmentId: d.shipmentId,
+      title: `${d.type} at ${d.location}`,
+      category: d.type,
+      detectedAtIso: d.detectedAt,
+      location: d.location,
+      summary: d.explanation,
+      verified: d.exists,
+      sources: d.evidence.map((e: any) => ({
+        id: e.id,
+        connector:
+          e.type === "NEWS"
+            ? "NewsConnector"
+            : e.type === "WEATHER"
+              ? "WeatherConnector"
+              : e.type === "AIS"
+                ? "AISConnector"
+                : "PortConnector",
+        label: e.title,
+        publisher: `${e.provider} · ${e.dataStatus}`,
+        observedAtIso: e.timestamp,
+        summary: e.description,
+        confidence: e.confidence,
+        simulated: e.dataStatus !== "LIVE",
+        dataStatus: e.dataStatus,
+        provider: e.provider,
+        url: e.url,
+      })),
+    };
+}
+
+function mapDecisionStatus(status: string, acted: boolean): Decision["overall_status"] {
+  if (status === "AUTO_COMMIT") return acted ? "AUTO_COMMITTED" : "DECISION_READY";
+  if (status === "APPROVED") return acted ? "APPROVED_COMMITTED" : "PENDING_APPROVAL";
+  if (status === "OVERRIDDEN") return acted ? "OVERRIDDEN_COMMITTED" : "PENDING_APPROVAL";
+  if (status === "PENDING_APPROVAL") return "PENDING_APPROVAL";
+  if (status === "POLICY_REFUSED") return "REJECTED_ESCALATED";
+  return "DECISION_READY";
+}
+function mapAct(a: any): ActResult {
+  return {
+    committedOptionId: a.decision?.recommendedOption ?? "",
+    committedLabel:
+      a.decision?.options?.find((o: any) => o.id === a.decision.recommendedOption)?.type ??
+      "Committed route",
     executedAtIso: new Date().toISOString(),
     routeRedrawn: true,
-    partnersNotified: ["Carrier operations", "Terminal agent", "Consignee planning"],
-    ledgerRef: `ACT-${randomRef()}`,
-    simulated: true,
+    partnersNotified: [a.notification?.delivery ?? "simulated_external_delivery"],
+    ledgerRef: a.ledgerId ?? "",
+    simulated: a.notification?.delivery !== "delivered",
+  };
+}
+function mapLedger(a: any): LedgerEntry {
+  return {
+    id: a.ledgerId ?? crypto.randomUUID(),
+    timestampIso: new Date().toISOString(),
+    shipmentId: a.shipment?.id ?? "",
+    lane: `${a.shipment?.origin?.name ?? ""} → ${a.shipment?.destination?.name ?? ""}`,
+    decision:
+      a.decision?.options?.find((o: any) => o.id === a.decision.recommendedOption)?.type ??
+      "Decision",
+    status: a.decision?.overallStatus === "AUTO_COMMIT" ? "AUTO_COMMITTED" : "APPROVED_COMMITTED",
+    actorType: "system",
+    actorName: "Backend orchestration",
+    reference: a.ledgerId ?? "",
+    rationale: a.decision?.reasoning ?? "",
+    decisionSource: a.decision?.provider === "gemini" ? "gemini" : "fallback",
+    seeded: false,
   };
 }
 
-function appendLedger(
-  dispatch: React.Dispatch<Action>,
-  input: {
-    decision: Decision;
-    shipment: Shipment;
-    status: LedgerEntry["status"];
-    actorType: LedgerEntry["actorType"];
-    actorName: string;
-    decisionLabel: string;
-    reference: string;
-    evidence: LedgerEntry["snapshot"] extends undefined ? never : NonNullable<LedgerEntry["snapshot"]>["evidence"];
-    approval?: NonNullable<LedgerEntry["snapshot"]>["approval"];
-  },
-) {
-  const now = new Date();
-  const entry: LedgerEntry = {
-    id: `LG-${now.toISOString().slice(0, 10).replace(/-/g, "")}-${input.reference.slice(-4)}`,
-    timestampIso: now.toISOString(),
-    shipmentId: input.shipment.id,
-    lane: `${input.shipment.origin.name} → ${input.shipment.destination.name}`,
-    decision: input.decisionLabel,
-    status: input.status,
-    actorType: input.actorType,
-    actorName: input.actorName,
-    reference: input.reference,
-    rationale: input.decision.rationale,
-    decisionSource: input.decision.source,
+function mapBackendLedger(entry: any): LedgerEntry {
+  const payload = entry.payload ?? {};
+  const decision = payload.decision ?? {};
+  const shipment = payload.shipment ?? {};
+  const selected = payload.selectedOption ?? {};
+  const status: LedgerEntry["status"] =
+    entry.eventType === "DECISION_REJECTED"
+      ? "REJECTED_ESCALATED"
+      : decision.overallStatus === "AUTO_COMMIT"
+        ? "AUTO_COMMITTED"
+        : decision.overallStatus === "OVERRIDDEN"
+          ? "OVERRIDDEN_COMMITTED"
+          : "APPROVED_COMMITTED";
+  const evidence = (payload.disruption?.evidence ?? []).map((e: any) => ({
+    id: e.id,
+    connector:
+      e.type === "NEWS"
+        ? "NewsConnector"
+        : e.type === "WEATHER"
+          ? "WeatherConnector"
+          : e.type === "AIS"
+            ? "AISConnector"
+            : "PortConnector",
+    label: e.title,
+    publisher: `${e.provider} · ${e.dataStatus}`,
+    observedAtIso: e.timestamp,
+    summary: e.description,
+    confidence: e.confidence,
+    simulated: e.dataStatus !== "LIVE",
+    dataStatus: e.dataStatus,
+    provider: e.provider,
+    url: e.url,
+  }));
+  const options = (decision.options ?? []).map((o: any) => ({
+    id: o.id,
+    type: o.type === "switch_mode" ? "switch_mode" : o.type,
+    label: o.type?.replace("_", " ") ?? "option",
+    description: o.reason,
+    cost_usd: o.costUsd,
+    days_added: o.delayDays,
+    fuel_pct: 0,
+    fuel_tonnes: o.fuelTonnes,
+    risk_score: o.riskScore,
+    status: o.status,
+    refusal_reason: o.policyReasons?.[0],
+    constraint: o.policyReasons?.[0],
+  }));
+  return {
+    id: entry.id,
+    timestampIso: entry.timestamp,
+    shipmentId: entry.shipmentId,
+    lane: `${shipment.origin?.name ?? ""} → ${shipment.destination?.name ?? ""}`,
+    decision: selected.type?.replace("_", " ") ?? entry.eventType,
+    status,
+    actorType: entry.actor?.startsWith("HUMAN") ? "human" : "system",
+    actorName: entry.actor,
+    reference: entry.id,
+    rationale: decision.reasoning ?? "No model reasoning retained.",
+    decisionSource: decision.provider === "gemini" ? "gemini" : "fallback",
     seeded: false,
     snapshot: {
-      options: input.decision.options,
-      do_nothing: input.decision.do_nothing,
-      recommended_option_id: input.decision.recommended_option_id,
-      constraint_analysis: input.decision.constraint_analysis,
-      approval_reasons: input.decision.approval_reasons,
-      evidence: input.evidence,
-      ...(input.approval ? { approval: input.approval } : {}),
+      options,
+      do_nothing: {
+        cost_usd: decision.doNothing?.costUsd ?? 0,
+        days_added: decision.doNothing?.delayDays ?? 0,
+        risk_score: decision.doNothing?.riskScore ?? 0,
+        description: decision.doNothing?.reason ?? "",
+      },
+      recommended_option_id: decision.recommendedOption ?? null,
+      constraint_analysis: decision.policyRulesTriggered ?? [],
+      approval_reasons: decision.policyRulesTriggered ?? [],
+      evidence,
+      traceId: entry.traceId,
+      logs: (payload.logs ?? []).map(mapEvent),
+      notification: payload.notification,
     },
   };
-  dispatch({ type: "ledger/append", entry });
+}
+
+export async function downloadLedger(format: "json" | "csv" = "json") {
+  const response = await fetch(`${API}/api/ledger/export?format=${format}`);
+  if (!response.ok) throw new Error("Ledger export failed");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `sentinel-ledger-${new Date().toISOString().slice(0, 10)}.${format}`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }

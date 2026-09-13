@@ -118,7 +118,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "Sentinel Flash — Disruption Control Tower" },
       {
         property: "og:description",
-        content: "Sense, decide and act on supply-chain disruption with auditable, constraint-safe automation.",
+        content:
+          "Sense, decide and act on supply-chain disruption with auditable, constraint-safe automation.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -140,7 +141,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

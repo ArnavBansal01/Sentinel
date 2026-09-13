@@ -34,9 +34,9 @@ export const Route = createFileRoute("/planner")({
 });
 
 const STAGES = [
-  { key: "sense", label: "Sense", note: "Signals correlated and verified" },
-  { key: "decide", label: "Decide", note: "Options evaluated vs. inaction" },
-  { key: "act", label: "Act", note: "Committed or held for approval" },
+  { key: "sense", label: "Check", note: "Read the available data" },
+  { key: "decide", label: "Plan", note: "Compare recovery choices" },
+  { key: "act", label: "Apply", note: "Apply or ask a person" },
 ] as const;
 
 function PlannerPage() {
@@ -45,7 +45,9 @@ function PlannerPage() {
   const [hovered, setHovered] = useState<string | undefined>(undefined);
 
   const runs = Object.values(state.runs);
-  const disrupted = state.shipments.filter((s) => s.status === "disrupted" || s.status === "pending_approval");
+  const disrupted = state.shipments.filter(
+    (s) => s.status === "disrupted" || s.status === "pending_approval",
+  );
   const pending = runs.filter((r) => r.state === "PENDING_APPROVAL");
   const autonomous = runs.filter((r) => r.state === "AUTO_COMMITTED");
   const atRisk = disrupted.reduce((sum, s) => sum + s.cargoValueUsd, 0);
@@ -67,34 +69,40 @@ function PlannerPage() {
 
   return (
     <AppShell
-      title="Control tower"
-      subtitle="Monitored network · seeded operational data"
+      title="Live overview"
+      subtitle={`${state.systemStatus.mode} data mode · updates and saved decisions`}
       actions={
-        pending.length > 0 ? <Badge tone="warning">{pending.length} awaiting approval</Badge> : undefined
+        pending.length > 0 ? (
+          <Badge tone="warning">{pending.length} awaiting approval</Badge>
+        ) : undefined
       }
     >
       <div className="flex min-h-full flex-col gap-3 p-3">
         <div className="panel grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
-          <Metric label="Monitored shipments" value={String(state.shipments.length)} hint="Seeded network" />
           <Metric
-            label="Active disruptions"
+            label="Shipments watched"
+            value={String(state.shipments.length)}
+            hint="Saved in the system"
+          />
+          <Metric
+            label="Problems found"
             value={String(disrupted.length)}
             tone={disrupted.length ? "danger" : "neutral"}
-            hint="Verified signals"
+            hint="Confirmed by data"
           />
           <Metric
-            label="Pending approval"
+            label="Waiting for review"
             value={String(pending.length)}
             tone={pending.length ? "warning" : "neutral"}
-            hint="Above autonomous thresholds"
+            hint="A person must decide"
           />
           <Metric
-            label="Autonomous decisions"
+            label="Auto decisions"
             value={String(autonomous.length)}
             tone={autonomous.length ? "success" : "neutral"}
-            hint="This session"
+            hint="Applied automatically"
           />
-          <Metric label="At-risk cargo value" value={usd(atRisk)} hint="Disrupted shipments" />
+          <Metric label="Cargo value at risk" value={usd(atRisk)} hint="Shipments with problems" />
         </div>
 
         <div className="panel flex flex-wrap items-center gap-2 px-3 py-2">
@@ -109,19 +117,27 @@ function PlannerPage() {
             </div>
           ))}
           <span className="ml-auto text-[11px] text-muted-foreground">
-            Stage counters derive from real workflow events.
+            Counts come from real system updates.
           </span>
         </div>
 
         <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[310px_minmax(0,1fr)_360px]">
           <Panel
-            title="Operational activity"
-            subtitle="Sense → Decide → Act"
+            title="What the system is doing"
+            subtitle="Check → Plan → Apply"
+            actions={
+              <Badge
+                tone={state.systemStatus.backend === "healthy" ? "success" : "danger"}
+                className={state.systemStatus.backend === "healthy" ? "status-live" : ""}
+              >
+                {state.systemStatus.backend === "healthy" ? "LIVE UPDATES" : "OFFLINE"}
+              </Badge>
+            }
             className="max-h-[560px] xl:max-h-none"
             bodyClassName="overflow-hidden flex"
           >
             {state.activity.length === 0 ? (
-              <EmptyState title="No activity recorded" description="Trigger a scenario to begin." />
+              <EmptyState title="No updates yet" description="Run a demo or check a shipment." />
             ) : (
               <ActivityFeed events={state.activity} />
             )}
@@ -129,7 +145,7 @@ function PlannerPage() {
 
           <Panel
             title="Network map"
-            subtitle="Seeded positions and routes — not live AIS"
+            subtitle="Saved positions and routes"
             className="min-h-[360px]"
             bodyClassName="p-0"
           >
@@ -142,8 +158,8 @@ function PlannerPage() {
           </Panel>
 
           <Panel
-            title="Shipments &amp; exceptions"
-            subtitle={`${state.shipments.length} shipments in scope`}
+            title="Shipments needing attention"
+            subtitle={`${state.shipments.length} shipments being watched`}
             className="max-h-[620px] xl:max-h-none"
             bodyClassName="overflow-hidden flex"
           >

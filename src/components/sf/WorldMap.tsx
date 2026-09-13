@@ -7,6 +7,16 @@ const W = 720;
 const H = 360;
 const VIEW = { x: 0, y: 18, w: 720, h: 282 };
 
+// Lightweight built-in coastlines keep the map visible while the detailed map loads.
+const FALLBACK_LAND: number[][][] = [
+  [[-168,70],[-130,72],[-100,55],[-82,25],[-105,8],[-135,20],[-168,55]],
+  [[-82,12],[-50,10],[-35,-15],[-55,-55],[-75,-35]],
+  [[-12,72],[35,70],[65,52],[48,35],[28,32],[8,44],[-12,58]],
+  [[-18,35],[12,37],[38,12],[50,-28],[20,-36],[-5,2]],
+  [[38,72],[115,72],[170,55],[145,25],[105,8],[72,22],[48,45]],
+  [[112,-12],[154,-10],[152,-42],[116,-36]],
+];
+
 function px(lon: number): number {
   return ((lon + 180) / 360) * W;
 }
@@ -44,7 +54,7 @@ export function WorldMap({
   onSelect?: (id: string) => void;
   className?: string;
 }) {
-  const [land, setLand] = useState<number[][][] | null>(null);
+  const [land, setLand] = useState<number[][][]>(FALLBACK_LAND);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,14 +63,13 @@ export function WorldMap({
       .then((data: number[][][]) => {
         if (!cancelled) setLand(data);
       })
-      .catch(() => setLand([]));
+      .catch(() => setLand(FALLBACK_LAND));
     return () => {
       cancelled = true;
     };
   }, []);
 
   const landPath = useMemo(() => {
-    if (!land) return "";
     return land
       .map((ring) => {
         const pts = ring.map(([lon, lat]) => `${px(lon!).toFixed(1)} ${py(lat!).toFixed(1)}`);
@@ -149,7 +158,7 @@ export function WorldMap({
         <span className="flex items-center gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-danger" /> Disruption
         </span>
-        <span>Seeded positions — not live AIS</span>
+        <span>Saved positions — live ship tracking appears in checks</span>
       </div>
     </div>
   );

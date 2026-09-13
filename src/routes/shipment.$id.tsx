@@ -8,7 +8,6 @@ import { DecisionComparison } from "@/components/sf/DecisionWorkspace";
 import { RequireSession } from "@/components/sf/guard";
 import { SensePanel } from "@/components/sf/SensePanel";
 import { Badge, Button, DecisionStateBadge, EmptyState, Panel, ShipmentStatusBadge } from "@/components/sf/ui";
-import { SEED_DISRUPTIONS } from "@/lib/sf/seed";
 import { dateTime, usdExact } from "@/lib/sf/format";
 import { useSentinel } from "@/lib/sf/store";
 import type { WorkflowRun } from "@/lib/sf/types";
@@ -35,10 +34,10 @@ export const Route = createFileRoute("/shipment/$id")({
   ),
 });
 
-const STAGE_SEQUENCE = ["Sense", "Decide", "Validate", "Act"] as const;
+const STAGE_SEQUENCE = ["Check", "Plan", "Safety check", "Apply"] as const;
 
 function stageIndex(run: WorkflowRun | undefined, busy: boolean): number {
-  if (!run) return -1;
+  if (!run) return busy ? 0 : -1;
   if (busy) return run.state === "DECISION_GENERATING" ? 1 : 0;
   switch (run.state) {
     case "DISRUPTION_DETECTED":
@@ -60,13 +59,12 @@ function ShipmentDetail() {
   const shipment = state.shipments.find((s) => s.id === id);
   const run = state.runs[id];
   const busy = isBusy(id);
-  const hasSeededSignal = Boolean(SEED_DISRUPTIONS[id]);
 
   if (!shipment) {
     return (
       <AppShell title="Shipment not found">
         <div className="p-6">
-          <EmptyState title="Unknown shipment" description="This shipment is not part of the seeded network." />
+          <EmptyState title="Shipment not found" description="This shipment is not in the current list." />
         </div>
       </AppShell>
     );
@@ -146,7 +144,7 @@ function ShipmentDetail() {
           ))}
           {run?.decision?.source && (
             <span className="num ml-auto text-[11px] text-muted-foreground">
-              Decision source: {run.decision.source === "gemini" ? "Gemini" : "Fallback"}
+              Plan made by: {run.decision.sourceNote === "demo" ? "Demo logic" : run.decision.source === "gemini" ? "Gemini AI" : "Backup logic"}
               {run.decision.sourceNote ? ` · ${run.decision.sourceNote}` : ""}
             </span>
           )}
@@ -156,56 +154,54 @@ function ShipmentDetail() {
           <div className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-surface p-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 text-danger" aria-hidden />
             <div>
-              <p className="text-sm font-semibold text-danger">Decision unavailable</p>
-              <p className="text-xs text-muted-foreground">{run.error} No state was committed.</p>
+              <p className="text-sm font-semibold text-danger">Could not create a plan</p>
+              <p className="text-xs text-muted-foreground">{run.error} Nothing was changed.</p>
             </div>
           </div>
         )}
 
         {/* SENSE */}
-        <Panel title="1 · Sense" subtitle="Independent evidence and verification" bodyClassName="p-3">
+        <Panel title="1 · Check the situation" subtitle="Look at news, weather, ships, and ports" bodyClassName="p-3">
           {run ? (
             <SensePanel event={run.disruption} />
           ) : (
             <div className="flex flex-col items-start gap-2 py-2">
               <p className="text-xs text-muted-foreground">
-                {hasSeededSignal
-                  ? "No disruption workflow has been run for this shipment in this session."
-                  : "No disruption signal is seeded for this shipment. It remains under passive monitoring."}
+                This shipment has not been checked yet. We will look at the available live data before making any plan.
               </p>
-              {hasSeededSignal && (
-                <Button size="sm" disabled={busy} onClick={() => triggerScenario(shipment.id)}>
-                  {busy ? "Running workflow…" : "Run disruption workflow"}
-                </Button>
-              )}
+              <Button size="sm" disabled={busy || state.systemStatus.backend !== "healthy"} onClick={() => triggerScenario(shipment.id)}>
+                {busy ? "Checking live data…" : "Check live data"}
+              </Button>
             </div>
           )}
         </Panel>
 
         {/* DECIDE */}
         <Panel
-          title="2 · Decide"
-          subtitle="Recovery options compared against the cost of inaction"
+          title="2 · Choose a recovery plan"
+          subtitle="Compare each plan with doing nothing"
           bodyClassName="p-3 space-y-3"
         >
           {busy && !decision && (
             <p className="text-xs text-muted-foreground">
-              Evaluating recovery options and enforcing constraints…
+              Creating plans and checking the safety rules…
             </p>
           )}
           {!busy && !decision && (
-            <p className="text-xs text-muted-foreground">Run the workflow to generate recovery options.</p>
+            <p className="text-xs text-muted-foreground">
+              {run?.state === "SENSE_COMPLETE" ? "No disruption was confirmed, so no plan was created and nothing was changed." : "Check the shipment to create recovery plans."}
+            </p>
           )}
           {decision && (
             <>
               <DecisionComparison decision={decision} />
               <div className="grid gap-3 lg:grid-cols-2">
                 <div className="rounded-lg border border-border bg-surface p-3">
-                  <span className="label-xs">Rationale</span>
+                  <span className="label-xs">Why this plan was chosen</span>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{decision.rationale}</p>
                 </div>
                 <div className="rounded-lg border border-border bg-surface p-3">
-                  <span className="label-xs">Constraint analysis</span>
+                  <span className="label-xs">Safety checks</span>
                   <ul className="mt-1 space-y-1">
                     {decision.constraint_analysis.map((c) => (
                       <li key={c} className="text-xs leading-snug text-muted-foreground">
@@ -220,7 +216,7 @@ function ShipmentDetail() {
         </Panel>
 
         {/* ACT */}
-        <Panel title="3 · Act" subtitle="Execution and approval state" bodyClassName="p-3 space-y-3">
+        <Panel title="3 · Apply the plan" subtitle="See whether it was applied or sent for human review" bodyClassName="p-3 space-y-3">
           {run && run.state === "PENDING_APPROVAL" && <ApprovalPanel run={run} />}
           {run && (run.act || run.state === "REJECTED_ESCALATED") && <ActionResultPanel run={run} />}
           {(!run || (!run.act && run.state !== "PENDING_APPROVAL" && run.state !== "REJECTED_ESCALATED")) && (

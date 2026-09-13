@@ -48,21 +48,20 @@ function LoginPage() {
         </div>
 
         <div className="max-w-md">
-          <p className="label-xs">Autonomous disruption control tower</p>
+          <p className="label-xs">Supply-chain problem solver</p>
           <h1 className="mt-2 text-3xl leading-tight font-semibold tracking-tight text-foreground">
             Sense. Decide. Act.
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Sentinel Flash verifies disruption signals, evaluates recovery options against the cost of
-            inaction, enforces hard operational constraints, and commits only what it is permitted to
-            commit.
+            Sentinel Flash checks for shipping problems, compares recovery plans, blocks unsafe choices,
+            and applies only the plans it is allowed to apply.
           </p>
           <dl className="mt-8 space-y-3 border-t border-border pt-6 text-sm">
             {[
-              ["Autonomous action", "Low-risk recoveries commit without a human in the loop."],
-              ["Hard-constraint refusal", "Cold-chain violations are refused, however cheap they are."],
-              ["Human-in-the-loop", "High-value decisions wait for an Approver."],
-              ["Auditable ledger", "Every committed decision is recorded and replayable."],
+              ["Automatic action", "Safe, low-risk plans can be applied automatically."],
+              ["Safety blocks", "A plan that breaks temperature rules is always blocked."],
+              ["Human review", "Important decisions wait for an Approver."],
+              ["Decision history", "Every applied plan keeps its reason and system steps."],
             ].map(([t, d]) => (
               <div key={t}>
                 <dt className="font-medium text-foreground">{t}</dt>
@@ -73,7 +72,9 @@ function LoginPage() {
         </div>
 
         <p className="text-[11px] text-muted-foreground">
-          Demo environment. Operational records are seeded; external feeds are simulated.
+          {state.systemStatus.mode === "LIVE"
+            ? "Live provider mode. Every signal displays its provider and data status."
+            : "Demo provider mode. Simulated evidence is explicitly labeled."}
         </p>
       </section>
 
