@@ -21,8 +21,10 @@ function ReviewWindow({ deadlineIso }: { deadlineIso: string | undefined }) {
   const minutes = Math.floor((remaining % 3_600_000) / 60_000);
   const seconds = Math.floor((remaining % 60_000) / 1_000);
   return (
-    <span className="font-semibold text-primary">
-      {remaining > 0 ? `Auto-commit in ${hours}h ${minutes}m ${seconds}s` : "Auto-commit starting…"}
+    <span className="text-[10px] font-semibold tracking-wide text-primary uppercase">
+      {remaining > 0
+        ? `Approve or change within ${hours}h ${minutes}m ${seconds}s, or auto-commit`
+        : "Review window ended · auto-commit starting…"}
     </span>
   );
 }
@@ -87,9 +89,8 @@ function ApproverPage() {
                     "Why review is needed",
                     "Cargo value",
                     "Risk",
-                    "Review window",
                     "Best plan",
-                    "",
+                    "Action",
                   ].map((h) => (
                     <th key={h} className="px-3 py-2 font-semibold tracking-wide uppercase">
                       {h}
@@ -117,26 +118,31 @@ function ApproverPage() {
                       </td>
                       <td className="num px-3 py-2.5">{usdExact(shipment.cargoValueUsd)}</td>
                       <td className="num px-3 py-2.5">{rec?.risk_score ?? shipment.riskScore}</td>
-                      <td className="num px-3 py-2.5">
-                        {run.decision?.auto_commit_after_review ? (
-                          <ReviewWindow deadlineIso={run.decision.review_deadline_iso} />
-                        ) : (
-                          <span title={`Waiting ${sinceLabel(run.startedAtIso)}`}>
-                            Manual approval required
-                          </span>
-                        )}
-                      </td>
                       <td className="px-3 py-2.5">
                         {rec ? `${rec.label} · ${usdExact(rec.cost_usd)}` : "—"}
                       </td>
                       <td className="px-3 py-2.5 text-right">
-                        <Link
-                          to="/shipment/$id"
-                          params={{ id: run.shipmentId }}
-                          className="rounded-md border border-border px-2 py-1 font-medium hover:bg-accent"
-                        >
-                          Review
-                        </Link>
+                        <div className="flex min-w-[250px] flex-col items-end gap-2">
+                          {run.decision?.auto_commit_after_review ? (
+                            <ReviewWindow deadlineIso={run.decision.review_deadline_iso} />
+                          ) : (
+                            <span
+                              className="text-[10px] font-semibold tracking-wide text-warning uppercase"
+                              title={`Waiting ${sinceLabel(run.startedAtIso)}`}
+                            >
+                              Human approval required · no auto-commit
+                            </span>
+                          )}
+                          <Link
+                            to="/shipment/$id"
+                            params={{ id: run.shipmentId }}
+                            className="rounded-md border border-border px-2.5 py-1.5 font-semibold hover:bg-accent"
+                          >
+                            {run.decision?.auto_commit_after_review
+                              ? "Review or change"
+                              : "Review required"}
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );
