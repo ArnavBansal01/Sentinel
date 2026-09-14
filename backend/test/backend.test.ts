@@ -5,6 +5,7 @@ import { normalizeGdeltArticle } from "../src/connectors/news/gdeltConnector.js"
 import { normalizeOpenMeteo } from "../src/connectors/weather/openMeteoConnector.js";
 import { normalizeAisMessage } from "../src/connectors/ais/aisStreamConnector.js";
 import { calculateConfidence } from "../src/agents/sense/confidence.js";
+import { SenseAgent } from "../src/agents/sense/senseAgent.js";
 import { GeminiDecisionSchema } from "../src/agents/decide/decisionSchema.js";
 import { applyPolicy } from "../src/policy/policyEngine.js";
 import { shipments } from "../src/shipments/seed.js";
@@ -215,6 +216,20 @@ describe("integration", () => {
         ),
     ).toBe(false);
     expect(repository.ledger().some((entry) => cleared.includes(entry.shipmentId))).toBe(false);
+  });
+
+  it("stores a demo disruption and consumes it during the normal check workflow", async () => {
+    const shipment = repository.shipment("SF-2041")!;
+    const disruption = await SenseAgent.demo().run(shipment, randomUUID());
+    repository.saveDemoInjection(shipment.id, randomUUID(), disruption);
+
+    const result: any = await orchestrate(shipment.id, randomUUID());
+    expect(result.disruption.eventId).toBe(disruption.eventId);
+    expect(result.disruption.evidence.every((signal: any) => signal.dataStatus === "DEMO")).toBe(
+      true,
+    );
+    expect(result.decision.provider).toBe("deterministic_demo");
+    expect(repository.demoInjection(shipment.id)).toBeUndefined();
   });
 
   it("supports approver approve, reject and viable override outcomes", async () => {

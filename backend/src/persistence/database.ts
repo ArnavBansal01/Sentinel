@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS decisions(id TEXT PRIMARY KEY,request_id TEXT UNIQUE 
 CREATE TABLE IF NOT EXISTS actions(id TEXT PRIMARY KEY,decision_id TEXT UNIQUE NOT NULL,shipment_id TEXT NOT NULL,json TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS activity(id TEXT PRIMARY KEY,shipment_id TEXT NOT NULL,json TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS ledger(id TEXT PRIMARY KEY,action_id TEXT UNIQUE,json TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS requests(request_id TEXT PRIMARY KEY,shipment_id TEXT NOT NULL,result_json TEXT);`);
+CREATE TABLE IF NOT EXISTS requests(request_id TEXT PRIMARY KEY,shipment_id TEXT NOT NULL,result_json TEXT);
+CREATE TABLE IF NOT EXISTS demo_injections(shipment_id TEXT PRIMARY KEY,trace_id TEXT NOT NULL,json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS demo_runs(request_id TEXT PRIMARY KEY,shipment_id TEXT NOT NULL);`);
 const insertShipment = db.prepare("INSERT OR IGNORE INTO shipments(id,json,version) VALUES(?,?,0)");
 for (const s of seed) insertShipment.run(s.id, JSON.stringify(s));
 const parse = <T>(r: unknown): T => JSON.parse((r as { json: string }).json) as T;
@@ -102,8 +104,32 @@ export const repository = {
     db
       .prepare("INSERT INTO actions(id,decision_id,shipment_id,json) VALUES(?,?,?,?)")
       .run(id, decisionId, shipmentId, JSON.stringify(value)),
+  saveDemoInjection: (shipmentId: string, traceId: string, disruption: DisruptionAssessment) =>
+    db
+      .prepare("INSERT OR REPLACE INTO demo_injections(shipment_id,trace_id,json) VALUES(?,?,?)")
+      .run(shipmentId, traceId, JSON.stringify(disruption)),
+  demoInjection: (shipmentId: string) => {
+    const row = db.prepare("SELECT json FROM demo_injections WHERE shipment_id=?").get(shipmentId);
+    return row ? parse<DisruptionAssessment>(row) : undefined;
+  },
+  consumeDemoInjection: (shipmentId: string, requestId: string) => {
+    db.prepare("DELETE FROM demo_injections WHERE shipment_id=?").run(shipmentId);
+    db.prepare("INSERT OR REPLACE INTO demo_runs(request_id,shipment_id) VALUES(?,?)").run(
+      requestId,
+      shipmentId,
+    );
+  },
   clearDemoData: () => {
-    const demoShipments = seed.filter((shipment) => shipment.demoScenario);
+    const affectedIds = new Set(seed.filter((shipment) => shipment.demoScenario).map((s) => s.id));
+    for (const row of db.prepare("SELECT shipment_id FROM demo_injections").all() as Array<{
+      shipment_id: string;
+    }>)
+      affectedIds.add(row.shipment_id);
+    for (const row of db.prepare("SELECT shipment_id FROM demo_runs").all() as Array<{
+      shipment_id: string;
+    }>)
+      affectedIds.add(row.shipment_id);
+    const demoShipments = seed.filter((shipment) => affectedIds.has(shipment.id));
     const demoIds = new Set(demoShipments.map((shipment) => shipment.id));
     const ledgerRows = db.prepare("SELECT id,json FROM ledger").all() as Array<{
       id: string;
@@ -129,6 +155,8 @@ export const repository = {
           shipment.id,
         );
       }
+      db.prepare("DELETE FROM demo_injections").run();
+      db.prepare("DELETE FROM demo_runs").run();
       db.exec("COMMIT");
     } catch (error) {
       db.exec("ROLLBACK");

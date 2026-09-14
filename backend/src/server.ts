@@ -138,6 +138,29 @@ app.post("/api/demo/orchestrate/:shipmentId", async (q, r, n) => {
     n(e);
   }
 });
+app.post("/api/demo/disruption/:shipmentId", async (q, r, n) => {
+  try {
+    const shipment = repository.shipment(q.params.shipmentId);
+    if (!shipment) return r.status(404).json({ error: "shipment_not_found" });
+    const traceId = randomUUID();
+    const disruption = await SenseAgent.demo().run(shipment, traceId);
+    repository.saveDemoInjection(shipment.id, traceId, disruption);
+    shipment.currentState = "DISRUPTION_DETECTED";
+    shipment.status = "disrupted";
+    repository.saveShipment(shipment);
+    r.json({
+      traceId,
+      requestId: randomUUID(),
+      shipment: repository.shipment(shipment.id),
+      disruption,
+      decision: null,
+      action: null,
+      pendingDemoDisruption: true,
+    });
+  } catch (error) {
+    n(error);
+  }
+});
 app.post("/api/demo/reset", (_q, r, n) => {
   try {
     const clearedShipmentIds = repository.clearDemoData();

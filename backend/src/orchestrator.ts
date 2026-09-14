@@ -5,7 +5,11 @@ import { ActAgent } from "./agents/act/actAgent.js";
 import { repository, db } from "./persistence/database.js";
 import { publish } from "./events/eventBus.js";
 import type { LedgerEntry } from "./types/domain.js";
-export async function orchestrate(shipmentId: string, requestId: string = randomUUID(), forceDemo = false) {
+export async function orchestrate(
+  shipmentId: string,
+  requestId: string = randomUUID(),
+  forceDemo = false,
+) {
   const traceId = randomUUID();
   const existing = db
     .prepare("SELECT result_json FROM requests WHERE request_id=?")
@@ -19,13 +23,49 @@ export async function orchestrate(shipmentId: string, requestId: string = random
   );
   shipment.currentState = "SENSE_RUNNING";
   repository.saveShipment(shipment);
-  const disruption = await (forceDemo ? SenseAgent.demo() : new SenseAgent()).run(shipment, traceId);
+  const injectedDisruption = forceDemo ? undefined : repository.demoInjection(shipment.id);
+  const disruption = injectedDisruption
+    ? injectedDisruption
+    : await (forceDemo ? SenseAgent.demo() : new SenseAgent()).run(shipment, traceId);
+  if (injectedDisruption) {
+    publish(
+      traceId,
+      "sense",
+      "sense.started",
+      shipment.id,
+      "Checking live inputs and pending demo disruptions",
+    );
+    for (const signal of injectedDisruption.evidence)
+      publish(
+        traceId,
+        "sense",
+        "sense.signal_received",
+        shipment.id,
+        `DEMO ${signal.type}: ${signal.title}`,
+        signal,
+      );
+    publish(
+      traceId,
+      "sense",
+      "sense.disruption_detected",
+      shipment.id,
+      `Pending demo disruption detected at ${injectedDisruption.location}`,
+      injectedDisruption,
+    );
+  }
   repository.saveDisruption(disruption);
   if (!disruption.exists) {
     shipment.currentState = "MONITORED";
-    if (shipment.status === "disrupted" || shipment.status === "pending_approval") shipment.status = "monitoring";
+    if (shipment.status === "disrupted" || shipment.status === "pending_approval")
+      shipment.status = "monitoring";
     repository.saveShipment(shipment);
-    publish(traceId, "sense", "sense.no_disruption", shipment.id, "No verified disruption; decision and action stages skipped");
+    publish(
+      traceId,
+      "sense",
+      "sense.no_disruption",
+      shipment.id,
+      "No verified disruption; decision and action stages skipped",
+    );
     const result = {
       traceId,
       requestId,
@@ -34,12 +74,21 @@ export async function orchestrate(shipmentId: string, requestId: string = random
       decision: null,
       action: null,
     };
-    db.prepare("UPDATE requests SET result_json=? WHERE request_id=?").run(JSON.stringify(result), requestId);
+    db.prepare("UPDATE requests SET result_json=? WHERE request_id=?").run(
+      JSON.stringify(result),
+      requestId,
+    );
     return result;
   }
   shipment.currentState = "DISRUPTION_DETECTED";
   repository.saveShipment(shipment);
-  const decision = await new DecideAgent().run(shipment, disruption, traceId, requestId, forceDemo);
+  const decision = await new DecideAgent().run(
+    shipment,
+    disruption,
+    traceId,
+    requestId,
+    forceDemo || Boolean(injectedDisruption),
+  );
   repository.saveDecision(decision);
   let action: unknown = null;
   if (decision.overallStatus === "AUTO_COMMIT") {
@@ -65,6 +114,7 @@ export async function orchestrate(shipmentId: string, requestId: string = random
     JSON.stringify(result),
     requestId,
   );
+  if (injectedDisruption) repository.consumeDemoInjection(shipment.id, requestId);
   return result;
 }
 export async function approve(

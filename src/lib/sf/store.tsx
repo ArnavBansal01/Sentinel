@@ -47,6 +47,7 @@ interface SFContextValue {
   login: (r: Role) => void;
   logout: () => void;
   reset: () => Promise<void>;
+  injectDemoDisruption: (id: string) => Promise<void>;
   triggerScenario: (id: string, showcaseDemo?: boolean) => Promise<void>;
   resolveApproval: (id: string, a: ApprovalActionType, o?: string, n?: string) => Promise<void>;
   isBusy: (id: string) => boolean;
@@ -223,6 +224,36 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     },
     [busy],
   );
+  const injectDemoDisruption = useCallback(
+    async (id: string) => {
+      if (busy[id]) return;
+      setBusy((current) => ({ ...current, [id]: true }));
+      setState((current) => ({ ...current, lastError: null }));
+      try {
+        const response = await fetch(`${API}/api/demo/disruption/${id}`, { method: "POST" });
+        const payload = await response.json();
+        if (!response.ok)
+          throw new Error(payload.message ?? payload.error ?? "Could not add demo disruption");
+        const run = mapRun(payload);
+        setState((current) => ({
+          ...current,
+          runs: { ...current.runs, [id]: run },
+          shipments: current.shipments.map((shipment) =>
+            shipment.id === id ? payload.shipment : shipment,
+          ),
+        }));
+      } catch (error) {
+        setState((current) => ({
+          ...current,
+          lastError: error instanceof Error ? error.message : "Could not add demo disruption",
+        }));
+        throw error;
+      } finally {
+        setBusy((current) => ({ ...current, [id]: false }));
+      }
+    },
+    [busy],
+  );
   const resolveApproval = useCallback(
     async (id: string, action: ApprovalActionType, optionId?: string, note?: string) => {
       const user = state.user;
@@ -297,11 +328,22 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       reset,
+      injectDemoDisruption,
       triggerScenario,
       resolveApproval,
       isBusy: (id: string) => !!busy[id],
     }),
-    [state, ready, login, logout, reset, triggerScenario, resolveApproval, busy],
+    [
+      state,
+      ready,
+      login,
+      logout,
+      reset,
+      injectDemoDisruption,
+      triggerScenario,
+      resolveApproval,
+      busy,
+    ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
@@ -360,7 +402,7 @@ function mapRun(p: any): WorkflowRun {
       shipmentId: p.shipment.id,
       requestId: p.requestId,
       version: 0,
-      state: "SENSE_COMPLETE",
+      state: d.exists ? "DISRUPTION_DETECTED" : "SENSE_COMPLETE",
       startedAtIso: d.detectedAt,
       disruption: mapDisruption(d),
       decision: null,
