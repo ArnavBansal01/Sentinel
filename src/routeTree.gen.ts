@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApproverRouteImport } from './routes/approver'
+import { Route as CaseStudiesRouteImport } from './routes/case-studies'
 import { Route as IntegrityRouteImport } from './routes/integrity'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PlannerRouteImport } from './routes/planner'
@@ -28,6 +29,11 @@ const IndexRoute = IndexRouteImport.update({
 const ApproverRoute = ApproverRouteImport.update({
   id: '/approver',
   path: '/approver',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CaseStudiesRoute = CaseStudiesRouteImport.update({
+  id: '/case-studies',
+  path: '/case-studies',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IntegrityRoute = IntegrityRouteImport.update({
@@ -74,6 +80,7 @@ const ShipmentIdRoute = ShipmentIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/approver': typeof ApproverRoute
+  '/case-studies': typeof CaseStudiesRoute
   '/integrity': typeof IntegrityRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/approver': typeof ApproverRoute
+  '/case-studies': typeof CaseStudiesRoute
   '/integrity': typeof IntegrityRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/approver': typeof ApproverRoute
+  '/case-studies': typeof CaseStudiesRoute
   '/integrity': typeof IntegrityRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/approver'
+    | '/case-studies'
     | '/integrity'
     | '/login'
     | '/planner'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/approver'
+    | '/case-studies'
     | '/integrity'
     | '/login'
     | '/planner'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/approver'
+    | '/case-studies'
     | '/integrity'
     | '/login'
     | '/planner'
@@ -150,6 +162,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApproverRoute: typeof ApproverRoute
+  CaseStudiesRoute: typeof CaseStudiesRoute
   IntegrityRoute: typeof IntegrityRoute
   LoginRoute: typeof LoginRoute
   PlannerRoute: typeof PlannerRoute
@@ -174,6 +187,13 @@ declare module '@tanstack/react-router' {
       path: '/approver'
       fullPath: '/approver'
       preLoaderRoute: typeof ApproverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/case-studies': {
+      id: '/case-studies'
+      path: '/case-studies'
+      fullPath: '/case-studies'
+      preLoaderRoute: typeof CaseStudiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/integrity': {
@@ -238,6 +258,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApproverRoute: ApproverRoute,
+  CaseStudiesRoute: CaseStudiesRoute,
   IntegrityRoute: IntegrityRoute,
   LoginRoute: LoginRoute,
   PlannerRoute: PlannerRoute,

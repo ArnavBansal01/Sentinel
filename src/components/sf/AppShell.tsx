@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Bell,
+  BookOpenCheck,
   ClipboardCheck,
   Database,
   GitBranch,
@@ -31,6 +32,7 @@ const NAV = [
   { to: "/scenarios", label: "Recovery plans", group: "Decisions", icon: GitBranch },
   { to: "/approver", label: "Review decisions", group: "Governance", icon: ClipboardCheck },
   { to: "/ledger", label: "Decision history", group: "Audit", icon: ScrollText },
+  { to: "/case-studies", label: "Case studies", group: "Learn", icon: BookOpenCheck },
 ] as const;
 
 export function AppShell({
