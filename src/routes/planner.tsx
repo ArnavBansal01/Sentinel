@@ -6,7 +6,7 @@ import { AppShell } from "@/components/sf/AppShell";
 import { RequireSession } from "@/components/sf/guard";
 import { ShipmentList } from "@/components/sf/ShipmentList";
 import { Badge, EmptyState, Metric, Panel } from "@/components/sf/ui";
-import { WorldMap } from "@/components/sf/WorldMap";
+import { LiveMap } from "@/components/sf/LiveMap";
 import { usd } from "@/lib/sf/format";
 import { useSentinel } from "@/lib/sf/store";
 
@@ -109,7 +109,10 @@ function PlannerPage() {
 
         <div className="panel grid gap-2 p-2.5 sm:grid-cols-2 xl:grid-cols-4">
           {STAGES.map((s, i) => (
-            <div key={s.key} className="workflow-step relative flex min-w-0 items-center gap-3 rounded-lg border border-transparent bg-surface-muted px-3 py-2.5 transition-colors hover:border-border-strong">
+            <div
+              key={s.key}
+              className="workflow-step relative flex min-w-0 items-center gap-3 rounded-lg border border-transparent bg-surface-muted px-3 py-2.5 transition-colors hover:border-border-strong"
+            >
               <span className="num grid h-7 w-7 shrink-0 place-items-center rounded-full border border-primary/25 bg-success-surface text-[11px] font-bold text-primary">
                 {i + 1}
               </span>
@@ -117,8 +120,14 @@ function PlannerPage() {
                 <span className="label-xs block text-foreground/90">{s.label}</span>
                 <span className="block truncate text-[11px] text-muted-foreground">{s.note}</span>
               </div>
-              <span className="num rounded-md bg-surface px-2 py-1 text-xs font-semibold shadow-sm">{stageCounts[s.key]}</span>
-              {i < STAGES.length - 1 && <span className="absolute -right-2.5 z-10 hidden text-muted-foreground xl:block">→</span>}
+              <span className="num rounded-md bg-surface px-2 py-1 text-xs font-semibold shadow-sm">
+                {stageCounts[s.key]}
+              </span>
+              {i < STAGES.length - 1 && (
+                <span className="absolute -right-2.5 z-10 hidden text-muted-foreground xl:block">
+                  →
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -151,7 +160,7 @@ function PlannerPage() {
             className="min-h-0 self-start"
             bodyClassName="p-0 aspect-[2/1] min-h-[320px] max-h-[540px] flex-none"
           >
-            <WorldMap
+            <LiveMap
               shipments={state.shipments}
               affectedIds={disrupted.map((s) => s.id)}
               selectedId={hovered}

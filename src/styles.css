@@ -283,7 +283,8 @@
 }
 
 @keyframes alert-ring {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.25;
     transform: scale(0.82);
   }
@@ -322,24 +323,49 @@
 
 .status-chip {
   animation: chip-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease;
 }
 
-.status-ribbon > .status-chip:nth-child(2) { animation-delay: 45ms; }
-.status-ribbon > .status-chip:nth-child(3) { animation-delay: 90ms; }
-.status-ribbon > .status-chip:nth-child(4) { animation-delay: 135ms; }
-.status-ribbon > .status-chip:nth-child(5) { animation-delay: 180ms; }
-.status-ribbon > .status-chip:nth-child(6) { animation-delay: 225ms; }
-.status-ribbon > .status-chip:nth-child(7) { animation-delay: 270ms; }
+.status-ribbon > .status-chip:nth-child(2) {
+  animation-delay: 45ms;
+}
+.status-ribbon > .status-chip:nth-child(3) {
+  animation-delay: 90ms;
+}
+.status-ribbon > .status-chip:nth-child(4) {
+  animation-delay: 135ms;
+}
+.status-ribbon > .status-chip:nth-child(5) {
+  animation-delay: 180ms;
+}
+.status-ribbon > .status-chip:nth-child(6) {
+  animation-delay: 225ms;
+}
+.status-ribbon > .status-chip:nth-child(7) {
+  animation-delay: 270ms;
+}
 
 .workflow-step {
   animation: workflow-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
-.workflow-step:nth-child(2) { animation-delay: 70ms; }
-.workflow-step:nth-child(3) { animation-delay: 140ms; }
-.workflow-step:nth-child(4) { animation-delay: 210ms; }
+.workflow-step:nth-child(2) {
+  animation-delay: 70ms;
+}
+.workflow-step:nth-child(3) {
+  animation-delay: 140ms;
+}
+.workflow-step:nth-child(4) {
+  animation-delay: 210ms;
+}
 
 .panel,
 .metric-card,
@@ -365,7 +391,9 @@ a {
 }
 
 .app-main tbody tr {
-  transition: background-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 @media (hover: hover) {
@@ -375,7 +403,9 @@ a {
   }
 
   .brand-mark {
-    transition: filter 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition:
+      filter 220ms ease,
+      transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .side-nav-link:hover {
@@ -414,6 +444,87 @@ a {
 button:not(:disabled):active,
 a:active {
   transform: scale(0.98);
+}
+
+.sf-leaflet-marker {
+  background: transparent;
+  border: 0;
+}
+
+.sf-marker-shell {
+  --marker-color: #38bdf8;
+  position: relative;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+}
+
+.sf-marker-shell::before {
+  position: absolute;
+  inset: 4px;
+  border-radius: inherit;
+  background: var(--marker-color);
+  content: "";
+  opacity: 0.22;
+}
+
+.sf-marker-shell > span {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #07111c;
+  border-radius: 999px;
+  background: var(--marker-color);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--marker-color) 35%, transparent),
+    0 5px 14px rgb(0 0 0 / 45%);
+}
+
+.sf-marker-shell.is-selected {
+  filter: drop-shadow(0 0 8px var(--marker-color));
+  transform: scale(1.2);
+}
+
+.sf-marker-shell.is-pulsing::before {
+  animation: sf-map-pulse 1.8s ease-out infinite;
+}
+
+.sf-leaflet-popup .leaflet-popup-content-wrapper,
+.sf-leaflet-popup .leaflet-popup-tip {
+  background: #f8fafc;
+}
+
+.sf-leaflet-popup .leaflet-popup-content {
+  margin: 12px;
+}
+
+.leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(72%) contrast(96%) saturate(65%);
+}
+
+.leaflet-control-zoom a {
+  background: rgb(7 17 28 / 92%);
+  color: #e2e8f0;
+  border-color: rgb(255 255 255 / 12%);
+}
+
+.leaflet-control-zoom a:hover {
+  background: #142435;
+  color: white;
+}
+
+@keyframes sf-map-pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.7);
+  }
+  75%,
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
