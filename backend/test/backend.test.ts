@@ -201,6 +201,28 @@ describe("integration", () => {
     }
   });
 
+  it("injects prototype disruptions for every shipment except the SF-2043 control", async () => {
+    for (const shipment of shipments) {
+      const result: any = await orchestrate(shipment.id, randomUUID(), false, true);
+      expect(result.shipment.id).toBe(shipment.id);
+      if (shipment.id === "SF-2043") {
+        expect(result.disruption.exists).toBe(false);
+        expect(result.disruption.evidence).toHaveLength(0);
+        expect(result.decision).toBeNull();
+        expect(result.action).toBeNull();
+        expect(result.shipment.currentState).toBe("MONITORED");
+      } else {
+        expect(result.disruption.exists).toBe(true);
+        expect(result.disruption.evidence.length).toBeGreaterThan(0);
+        expect(
+          result.disruption.evidence.every((signal: any) => signal.dataStatus === "DEMO"),
+        ).toBe(true);
+        expect(result.decision).not.toBeNull();
+        expect(["AUTO_COMMIT", "PENDING_APPROVAL"]).toContain(result.decision.overallStatus);
+      }
+    }
+  });
+
   it("supports approver approve, reject and viable override outcomes", async () => {
     const approvalRun: any = await orchestrate("SF-1002", randomUUID(), true);
     expect(approvalRun.decision.overallStatus).toBe("PENDING_APPROVAL");

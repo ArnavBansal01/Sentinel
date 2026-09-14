@@ -21,6 +21,35 @@ export class SenseAgent {
       new PortcastConnector(true),
     );
   }
+  static prototypeControl(shipment: Shipment, traceId: string): DisruptionAssessment {
+    publish(traceId, "sense", "sense.started", shipment.id, "Prototype control check started");
+    const assessment: DisruptionAssessment = {
+      eventId: randomUUID(),
+      shipmentId: shipment.id,
+      type: "ROUTE_DISRUPTION",
+      severity: 0,
+      confidence: 0,
+      location: shipment.destination.name,
+      detectedAt: new Date().toISOString(),
+      exists: false,
+      explanation:
+        "Prototype control route: no disruption was injected for SF-2043, so the decision and action stages are skipped.",
+      affectedSegments: [],
+      evidence: [],
+      providers: [
+        {
+          provider: "Sentinel prototype scenario",
+          status: "DEMO",
+          reason: "SF-2043 is the no-disruption control shipment.",
+        },
+      ],
+    };
+    publish(traceId, "sense", "sense.signal_correlated", shipment.id, assessment.explanation, {
+      confidence: 0,
+      prototypeControl: true,
+    });
+    return assessment;
+  }
   async run(shipment: Shipment, traceId: string): Promise<DisruptionAssessment> {
     publish(traceId, "sense", "sense.started", shipment.id, "Evidence collection started");
     const results = await Promise.all([

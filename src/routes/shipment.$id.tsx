@@ -7,7 +7,14 @@ import { AppShell } from "@/components/sf/AppShell";
 import { DecisionComparison } from "@/components/sf/DecisionWorkspace";
 import { RequireSession } from "@/components/sf/guard";
 import { SensePanel } from "@/components/sf/SensePanel";
-import { Badge, Button, DecisionStateBadge, EmptyState, Panel, ShipmentStatusBadge } from "@/components/sf/ui";
+import {
+  Badge,
+  Button,
+  DecisionStateBadge,
+  EmptyState,
+  Panel,
+  ShipmentStatusBadge,
+} from "@/components/sf/ui";
 import { dateTime, usdExact } from "@/lib/sf/format";
 import { useSentinel } from "@/lib/sf/store";
 import type { WorkflowRun } from "@/lib/sf/types";
@@ -65,7 +72,10 @@ function ShipmentDetail() {
     return (
       <AppShell title="Shipment not found">
         <div className="p-6">
-          <EmptyState title="Shipment not found" description="This shipment is not in the current list." />
+          <EmptyState
+            title="Shipment not found"
+            description="This shipment is not in the current list."
+          />
         </div>
       </AppShell>
     );
@@ -91,13 +101,28 @@ function ShipmentDetail() {
         {/* Header facts */}
         <div className="panel grid grid-cols-2 gap-y-3 px-4 py-3 md:grid-cols-4 xl:grid-cols-7">
           <Fact label="Status" value={<ShipmentStatusBadge status={shipment.status} />} />
-          <Fact label="Cargo value" value={<span className="num font-semibold">{usdExact(shipment.cargoValueUsd)}</span>} />
-          <Fact label="ETA" value={<span className="num text-sm">{dateTime(shipment.etaIso)}</span>} />
-          <Fact label="Risk" value={<span className="num text-sm font-semibold">{shipment.riskScore}</span>} />
+          <Fact
+            label="Cargo value"
+            value={<span className="num font-semibold">{usdExact(shipment.cargoValueUsd)}</span>}
+          />
+          <Fact
+            label="ETA"
+            value={<span className="num text-sm">{dateTime(shipment.etaIso)}</span>}
+          />
+          <Fact
+            label="Risk"
+            value={<span className="num text-sm font-semibold">{shipment.riskScore}</span>}
+          />
           <Fact label="Mode" value={<span className="text-sm capitalize">{shipment.mode}</span>} />
           <Fact
             label="Decision state"
-            value={decision ? <DecisionStateBadge state={decision.overall_status} /> : <span className="text-sm text-muted-foreground">—</span>}
+            value={
+              decision ? (
+                <DecisionStateBadge state={decision.overall_status} />
+              ) : (
+                <span className="text-sm text-muted-foreground">—</span>
+              )
+            }
           />
           <Fact
             label="Constraints"
@@ -117,7 +142,9 @@ function ShipmentDetail() {
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-info/30 bg-info-surface px-3 py-2">
             <Snowflake className="h-4 w-4 text-info" aria-hidden />
             <span className="text-xs font-semibold text-info uppercase">Cold-chain shipment</span>
-            <span className="text-xs text-muted-foreground">{shipment.constraints.join(" · ")}</span>
+            <span className="text-xs text-muted-foreground">
+              {shipment.constraints.join(" · ")}
+            </span>
           </div>
         )}
 
@@ -145,7 +172,12 @@ function ShipmentDetail() {
           ))}
           {run?.decision?.source && (
             <span className="num ml-auto text-[11px] text-muted-foreground">
-              Plan made by: {run.decision.sourceNote === "demo" ? "Demo logic" : run.decision.source === "gemini" ? "Gemini runtime (MVP) · trained LLM is target architecture" : "Backup logic"}
+              Plan made by:{" "}
+              {run.decision.sourceNote === "demo"
+                ? "Demo logic"
+                : run.decision.source === "gemini"
+                  ? "Gemini runtime (MVP) · trained LLM is target architecture"
+                  : "Backup logic"}
               {run.decision.sourceNote ? ` · ${run.decision.sourceNote}` : ""}
             </span>
           )}
@@ -162,16 +194,38 @@ function ShipmentDetail() {
         )}
 
         {/* SENSE */}
-        <Panel title="1 · Sense" subtitle="Check news, weather, ships, and ports" bodyClassName="p-3">
+        <Panel title="1 · Sense" subtitle="Run the prototype disruption check" bodyClassName="p-3">
           {run && run.state !== "ERROR" ? (
-            <SensePanel event={run.disruption} />
+            <div className="space-y-3">
+              <SensePanel event={run.disruption} />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy || state.systemStatus.backend !== "healthy"}
+                onClick={() => triggerScenario(shipment.id, false, true)}
+              >
+                {busy ? "Running prototype check…" : "Run prototype check again"}
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-col items-start gap-2 py-2">
               <p className="text-xs text-muted-foreground">
-                {run?.state === "ERROR" ? "The last check failed. Try again to reconnect and check the live data." : "This shipment has not been checked yet. We will look at the available live data before making any plan."}
+                {run?.state === "ERROR"
+                  ? "The last prototype check failed. Try again."
+                  : shipment.id === "SF-2043"
+                    ? "SF-2043 is the no-disruption control route. The prototype will check it and safely skip planning."
+                    : "Run a repeatable prototype disruption, then create and safety-check recovery plans."}
               </p>
-              <Button size="sm" disabled={busy || state.systemStatus.backend !== "healthy"} onClick={() => triggerScenario(shipment.id)}>
-                {busy ? "Checking live data…" : run?.state === "ERROR" ? "Try live check again" : "Check live data"}
+              <Button
+                size="sm"
+                disabled={busy || state.systemStatus.backend !== "healthy"}
+                onClick={() => triggerScenario(shipment.id, false, true)}
+              >
+                {busy
+                  ? "Running prototype check…"
+                  : run?.state === "ERROR"
+                    ? "Try prototype check again"
+                    : "Run prototype check"}
               </Button>
             </div>
           )}
@@ -190,7 +244,9 @@ function ShipmentDetail() {
           )}
           {!busy && !decision && (
             <p className="text-xs text-muted-foreground">
-              {run?.state === "SENSE_COMPLETE" ? "No disruption was confirmed, so no plan was created and nothing was changed." : "Check the shipment to create recovery plans."}
+              {run?.state === "SENSE_COMPLETE"
+                ? "No disruption was confirmed, so no plan was created and nothing was changed."
+                : "Check the shipment to create recovery plans."}
             </p>
           )}
           {decision && (
@@ -199,7 +255,9 @@ function ShipmentDetail() {
               <div className="grid gap-3 lg:grid-cols-2">
                 <div className="rounded-lg border border-border bg-surface p-3">
                   <span className="label-xs">Why this plan was chosen</span>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{decision.rationale}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {decision.rationale}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-border bg-surface p-3">
                   <span className="label-xs">Safety checks</span>
@@ -217,11 +275,22 @@ function ShipmentDetail() {
         </Panel>
 
         {/* ACT */}
-        <Panel title="3 · Commit" subtitle="Apply the plan or send it for human review" bodyClassName="p-3 space-y-3">
+        <Panel
+          title="3 · Commit"
+          subtitle="Apply the plan or send it for human review"
+          bodyClassName="p-3 space-y-3"
+        >
           {run && run.state === "PENDING_APPROVAL" && <ApprovalPanel run={run} />}
-          {run && (run.act || run.state === "REJECTED_ESCALATED") && <ActionResultPanel run={run} />}
-          {(!run || (!run.act && run.state !== "PENDING_APPROVAL" && run.state !== "REJECTED_ESCALATED")) && (
-            <p className="text-xs text-muted-foreground">Nothing has been changed for this shipment.</p>
+          {run && (run.act || run.state === "REJECTED_ESCALATED") && (
+            <ActionResultPanel run={run} />
+          )}
+          {(!run ||
+            (!run.act &&
+              run.state !== "PENDING_APPROVAL" &&
+              run.state !== "REJECTED_ESCALATED")) && (
+            <p className="text-xs text-muted-foreground">
+              Nothing has been changed for this shipment.
+            </p>
           )}
         </Panel>
       </div>
