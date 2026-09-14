@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import {
   ArrowRight,
   BookOpenCheck,
@@ -68,40 +68,40 @@ const workflow = [
     name: "Sense",
     icon: Radar,
     tone: "text-info bg-info-surface border-info/25",
-    action: "Confirm the blockage",
+    action: "Load the real record",
     detail:
-      "Combine canal notices, AIS vessel queues, weather, port congestion, and trusted news. Mark each source as live, historical, or simulated.",
-    output: "Verified disruption, location, confidence, affected lanes",
+      "Use the documented 23–29 March closure, SCA refloating notice, published queue count, and reconstructed carrier voyage data.",
+    output: "422 queued vessels; 69-vessel Maersk study sample",
   },
   {
     number: "02",
     name: "Simulate",
     icon: GitBranch,
     tone: "text-primary bg-success-surface border-success/25",
-    action: "Compare recovery choices",
+    action: "Compare recorded paths",
     detail:
-      "Estimate sailing via the Cape of Good Hope, waiting for reopening, changing port or mode, and prioritising high-value or temperature-sensitive cargo.",
-    output: "Time, fuel, handling, cargo exposure, risk, and cost per option",
+      "Separate the 57 delayed Maersk vessels from the 12 that actually rerouted via the Cape and load the study’s cost results.",
+    output: "Observed delay and reroute cohorts with published impacts",
   },
   {
     number: "03",
     name: "Decide",
     icon: ShieldCheck,
     tone: "text-warning bg-warning-surface border-warning/30",
-    action: "Choose safely",
+    action: "Reproduce the decision",
     detail:
-      "Rank viable plans against the cost of doing nothing. Block choices that break cold-chain, capacity, compliance, or approval rules.",
-    output: "Best safe plan with plain-language reasoning and refusals",
+      "For Magleby Maersk, reproduce the documented Cape reroute and explain the distance, time, fuel, and avoided canal fee behind it.",
+    output: "Reroute selected; unsupported alternatives marked unavailable",
   },
   {
     number: "04",
     name: "Commit",
     icon: CheckCircle2,
     tone: "text-success bg-success-surface border-success/25",
-    action: "Apply or request approval",
+    action: "Save the replay",
     detail:
-      "Automatically apply low-risk decisions or send high-value decisions to a human. Save the evidence, calculation, actor, and action in the ledger.",
-    output: "Auditable action, notifications, approval state, saved reasoning",
+      "Present the observed action as a historical replay and retain direct links to the study and authority records used as evidence.",
+    output: "Auditable, sourced historical decision reconstruction",
   },
 ] as const;
 
@@ -139,19 +139,18 @@ function CaseStudiesPage() {
             <div className="rounded-xl border border-primary/25 bg-success-surface/60 p-4">
               <div className="flex items-center gap-2 text-primary">
                 <Sparkles className="h-4 w-4" />
-                <span className="text-xs font-semibold uppercase tracking-wide">Fictional workflow demonstration</span>
+                <span className="text-xs font-semibold uppercase tracking-wide">Research-data replay</span>
               </div>
               <p className="mt-2 text-sm leading-5">
-                Open a fictional comparable Suez disruption and see the system verify evidence, model alternatives,
-                enforce safety, and prepare a decision. Its planning estimates are not 2021 historical costs.
+                Replay the incident with actual voyage observations and the peer-reviewed carrier-impact study. Unknown
+                option prices stay unavailable instead of being invented.
               </p>
-              <Link
-                to="/shipment/$id"
-                params={{ id: "SF-1002" }}
+              <a
+                href="#historical-replay"
                 className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
               >
-                Open fictional scenario <ArrowRight className="h-4 w-4" />
-              </Link>
+                Open historical replay <ArrowRight className="h-4 w-4" />
+              </a>
             </div>
           </div>
         </section>
@@ -208,8 +207,117 @@ function CaseStudiesPage() {
         </section>
 
         <Panel
-          title="How Sentinel Flash would respond"
-          subtitle="A clear reconstruction of the product workflow—not a claim that the system operated in 2021"
+          title="Historical replay · Maersk fleet response"
+          subtitle="Observed March–April 2021 voyage data; amounts are published research estimates, not Sentinel-generated prices"
+          className="scroll-mt-4"
+          bodyClassName="p-4 sm:p-5"
+        >
+          <div id="historical-replay" className="space-y-5">
+            <div className="flex flex-col gap-3 rounded-lg border border-success/30 bg-success-surface/45 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Badge tone="success">Verified dataset</Badge>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">No fictional shipment</span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  The replay uses the published fleet analysis built from ship specifications, Maersk voyage schedules,
+                  arrival/departure observations, nautical distances, and AIS-related voyage reconstruction.
+                </p>
+              </div>
+              <a href="https://backoffice.biblio.ugent.be/download/01JNDNPNG96R6D7FVB20KKWZM3/01JNDNXQCDYY6EMFSH7SY492DQ" target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
+                Open full study <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                ["Sense", "422 vessels queued", "SCA figure reported by the study; normal traffic returned on 8 April."],
+                ["Fleet affected", "69 Maersk vessels", "57 delayed at or after the canal; 12 diverted via the Cape."],
+                ["Cargo exposed", "$26.5B", "Published estimate of goods aboard the 69-vessel Maersk sample."],
+                ["Recorded loss", "$88.79M", "$8.04M ship + $4.46M environmental + $76.29M inventory."],
+              ].map(([label, value, detail]) => (
+                <div key={label} className="rounded-lg border border-border bg-surface-muted p-4">
+                  <p className="label-xs">{label}</p>
+                  <p className="num mt-2 text-xl font-semibold">{value}</p>
+                  <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{detail}</p>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <div className="mb-3 flex items-end justify-between gap-3">
+                <div>
+                  <p className="label-xs">Simulate · documented response paths</p>
+                  <h3 className="mt-1 text-base font-semibold">Compare what carriers actually did</h3>
+                </div>
+                <Badge tone="info" dot={false}>Published results</Badge>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                <article className="rounded-lg border border-border bg-surface p-4">
+                  <div className="flex items-center justify-between gap-3"><p className="font-semibold">Wait for canal / backlog</p><Badge tone="neutral">57 vessels</Badge></div>
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded bg-surface-muted p-2.5"><p className="text-muted-foreground">Ship cost</p><p className="num mt-1 font-semibold">$6.84M</p></div>
+                    <div className="rounded bg-surface-muted p-2.5"><p className="text-muted-foreground">Inventory cost</p><p className="num mt-1 font-semibold">$51.70M</p></div>
+                    <div className="rounded bg-surface-muted p-2.5"><p className="text-muted-foreground">Environmental cost</p><p className="num mt-1 font-semibold">$0.75M</p></div>
+                    <div className="rounded bg-surface-muted p-2.5"><p className="text-muted-foreground">Anchorage fuel</p><p className="num mt-1 font-semibold">≈2,400 t</p></div>
+                  </div>
+                  <p className="mt-3 text-[11px] leading-4 text-muted-foreground">The study recorded 7,474 tonnes of CO₂ and about $22B of cargo aboard the delayed group.</p>
+                </article>
+
+                <article className="rounded-lg border border-primary/35 bg-success-surface/25 p-4">
+                  <div className="flex items-center justify-between gap-3"><p className="font-semibold">Reroute via Cape of Good Hope</p><Badge tone="success">12 vessels</Badge></div>
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded bg-surface-muted p-2.5"><p className="text-muted-foreground">Net ship-cost increase</p><p className="num mt-1 font-semibold">$1.20M</p></div>
+                    <div className="rounded bg-surface-muted p-2.5"><p className="text-muted-foreground">Inventory cost</p><p className="num mt-1 font-semibold">$24.56M</p></div>
+                    <div className="rounded bg-surface-muted p-2.5"><p className="text-muted-foreground">Environmental cost</p><p className="num mt-1 font-semibold">$3.51M</p></div>
+                    <div className="rounded bg-surface-muted p-2.5"><p className="text-muted-foreground">Extra fuel</p><p className="num mt-1 font-semibold">11,914 t</p></div>
+                  </div>
+                  <p className="mt-3 text-[11px] leading-4 text-muted-foreground">The group added 33,845 nautical miles and nearly 80 aggregate sailing days, while avoiding $5.86M in canal fees.</p>
+                </article>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-primary/35 bg-info-surface/45 p-4 sm:p-5">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div className="max-w-3xl">
+                  <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /><p className="label-xs text-primary">Decide · real vessel example</p></div>
+                  <h3 className="mt-2 text-lg font-semibold">Magleby Maersk → reroute via the Cape</h3>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    This reproduces the vessel’s documented action. The study found that Cape routing could be cheaper on
+                    some voyages after avoided Suez tolls, although inventory and environmental costs still increased.
+                  </p>
+                </div>
+                <Badge tone="success" dot={false}>Observed action · committed</Badge>
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                {[
+                  ["Capacity", "18,340 TEU"],
+                  ["Cape route", "10,783 nm · 572 h"],
+                  ["Cape fuel", "4,598 t"],
+                  ["Suez baseline", "7,034 nm · 373 h · 2,999 t"],
+                  ["Avoided canal fee", "$0.80M"],
+                ].map(([label, value]) => <div key={label} className="rounded-lg border border-border bg-surface p-3"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p><p className="num mt-1 text-xs font-semibold">{value}</p></div>)}
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-lg border border-border bg-surface-muted p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Re-speed price</p><p className="mt-1 text-xs font-semibold">Not published for this incident</p></div>
+                <div className="rounded-lg border border-border bg-surface-muted p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Port / mode switch price</p><p className="mt-1 text-xs font-semibold">Not published for this incident</p></div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning-surface/45 p-3">
+              <BookOpenCheck className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+              <p className="text-[11px] leading-5 text-muted-foreground">
+                Accuracy note: these costs are the peer-reviewed study’s estimates from actual voyage and fleet data—not
+                audited carrier invoices. The public record does not contain exact counterfactual prices for every possible
+                choice, so Sentinel displays “not published” for those choices rather than guessing.
+              </p>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel
+          title="How Sentinel processes the historical record"
+          subtitle="The real event and observed carrier responses mapped into Sense → Simulate → Decide → Commit"
         >
           <div className="grid gap-px bg-border lg:grid-cols-4">
             {workflow.map(({ number, name, icon: Icon, tone, action, detail, output }) => (
