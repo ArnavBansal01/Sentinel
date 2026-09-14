@@ -1,3 +1,12 @@
+import {
+  Activity,
+  AlertTriangle,
+  Box,
+  CircleDollarSign,
+  ClipboardCheck,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -113,6 +122,17 @@ export function Metric({
   hint?: string;
   tone?: Tone;
 }) {
+  const Icon = /shipment/i.test(label)
+    ? Box
+    : /disruption|problem/i.test(label)
+      ? AlertTriangle
+      : /approval|review/i.test(label)
+        ? ClipboardCheck
+        : /autonomous|decision/i.test(label)
+          ? Sparkles
+          : /value|risk/i.test(label)
+            ? CircleDollarSign
+            : Activity;
   const valueTone =
     tone === "danger"
       ? "text-danger"
@@ -123,8 +143,15 @@ export function Metric({
           : "text-foreground";
   return (
     <div className="metric-card panel flex min-h-28 flex-col justify-between gap-2 p-4 sm:p-5">
-      <span className="label-xs">{label}</span>
-      <span className={cn("num text-2xl leading-none font-semibold tracking-tight", valueTone)}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="metric-label">{label}</span>
+        <span className={cn("metric-icon", valueTone)}>
+          <Icon size={17} strokeWidth={1.7} />
+        </span>
+      </div>
+      <span
+        className={cn("metric-value text-3xl leading-none font-semibold tracking-tight", valueTone)}
+      >
         {value}
       </span>
       {hint && <span className="text-[11px] text-muted-foreground">{hint}</span>}
@@ -134,7 +161,10 @@ export function Metric({
 
 export function EmptyState({ title, description }: { title: string; description?: string }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-1 px-6 py-10 text-center">
+    <div className="flex h-full flex-col items-center justify-center gap-2 px-6 py-10 text-center">
+      <span className="mb-2 grid h-12 w-12 place-items-center rounded-2xl bg-accent text-primary">
+        <ShieldCheck size={22} strokeWidth={1.5} />
+      </span>
       <p className="text-sm font-medium text-foreground">{title}</p>
       {description && <p className="max-w-sm text-xs text-muted-foreground">{description}</p>}
     </div>

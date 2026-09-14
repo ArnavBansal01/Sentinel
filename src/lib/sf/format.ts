@@ -72,3 +72,12 @@ export const DECISION_STATE_LABEL: Record<DecisionState, string> = {
   OVERRIDDEN_COMMITTED: "Overridden — committed",
   REJECTED_ESCALATED: "Rejected — escalated",
 };
+
+export function approvalReasonLabel(reason: string): string {
+  const labels: Record<string, string> = {
+    TRANSIT_TIME_GT_7_DAYS: "Transit time exceeds seven days",
+    CARGO_VALUE_AT_RISK_GT_1000000_USD: "Cargo value at risk exceeds $1 million",
+    COLD_CHAIN_HUMAN_APPROVAL: "Temperature-controlled cargo requires human approval",
+  };
+  return labels[reason] ?? reason;
+}

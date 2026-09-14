@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
+import { NetworkSpotlights } from "@/components/sf/CargoVisuals";
+import { OverviewHero, SafetyNote } from "@/components/sf/OverviewHero";
 import { ActivityFeed } from "@/components/sf/ActivityFeed";
 import { AppShell } from "@/components/sf/AppShell";
 import { RequireSession } from "@/components/sf/guard";
@@ -80,31 +82,43 @@ function PlannerPage() {
       }
     >
       <div className="flex min-h-full flex-col gap-5 p-4 sm:p-5 lg:p-6">
+        <OverviewHero />
+        <div className="section-heading">
+          <div>
+            <p className="label-xs">OPERATIONS AT A GLANCE</p>
+            <h2>Network pulse</h2>
+          </div>
+          <span>Current operational snapshot</span>
+        </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5 xl:gap-4">
           <Metric
-            label="Shipments watched"
+            label="Active shipments"
             value={String(state.shipments.length)}
-            hint="Saved in the system"
+            hint="Across your network"
           />
           <Metric
-            label="Problems found"
+            label="Active disruptions"
             value={String(disrupted.length)}
             tone={disrupted.length ? "danger" : "neutral"}
-            hint="Confirmed by data"
+            hint="Require attention"
           />
           <Metric
-            label="Waiting for review"
+            label="Pending approvals"
             value={String(pending.length)}
             tone={pending.length ? "warning" : "neutral"}
-            hint="A person must decide"
+            hint="Human oversight"
           />
           <Metric
-            label="Auto decisions"
+            label="Autonomous actions"
             value={String(autonomous.length)}
             tone={autonomous.length ? "success" : "neutral"}
             hint="Applied automatically"
           />
-          <Metric label="Cargo value at risk" value={usd(atRisk)} hint="Shipments with problems" />
+          <Metric
+            label="Cargo value at risk"
+            value={usd(atRisk)}
+            hint="Exposure across disrupted cargo"
+          />
         </div>
 
         <div className="panel grid gap-2 p-2.5 sm:grid-cols-2 xl:grid-cols-4">
@@ -132,9 +146,9 @@ function PlannerPage() {
           ))}
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-5 xl:grid-cols-[minmax(280px,0.75fr)_minmax(480px,1.25fr)] 2xl:grid-cols-[290px_minmax(520px,1fr)_350px]">
+        <div className="overview-panels grid min-h-0 flex-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
           <Panel
-            title="What the system is doing"
+            title="Intelligence feed"
             subtitle="Sense → Simulate → Decide → Commit"
             actions={
               <Badge
@@ -144,7 +158,7 @@ function PlannerPage() {
                 {state.systemStatus.backend === "healthy" ? "LIVE UPDATES" : "OFFLINE"}
               </Badge>
             }
-            className="max-h-[560px] xl:max-h-[620px]"
+            className="intelligence-panel max-h-[440px] xl:col-start-2 xl:row-start-1"
             bodyClassName="overflow-hidden flex"
           >
             {state.activity.length === 0 ? (
@@ -155,10 +169,10 @@ function PlannerPage() {
           </Panel>
 
           <Panel
-            title="Network map"
+            title="Global shipment network"
             subtitle="Drag to move · scroll to zoom · select a ship"
-            className="min-h-0 self-start"
-            bodyClassName="p-0 aspect-[2/1] min-h-[320px] max-h-[540px] flex-none"
+            className="network-panel min-h-0 self-start xl:col-start-1 xl:row-start-1"
+            bodyClassName="p-0 h-[360px] flex-none"
           >
             <LiveMap
               shipments={state.shipments}
@@ -171,12 +185,14 @@ function PlannerPage() {
           <Panel
             title="Shipments needing attention"
             subtitle={`${state.shipments.length} shipments being watched`}
-            className="max-h-[620px] xl:col-span-2 xl:max-h-[620px] 2xl:col-span-1"
+            className="max-h-[480px] xl:col-span-2"
             bodyClassName="overflow-hidden flex"
           >
             <ShipmentList shipments={ordered} onHover={setHovered} />
           </Panel>
         </div>
+        <NetworkSpotlights />
+        <SafetyNote />
       </div>
     </AppShell>
   );

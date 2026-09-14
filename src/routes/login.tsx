@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ClipboardCheck, Radar } from "lucide-react";
+import { ArrowRight, Check, ShieldCheck, ClipboardCheck, Radar } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/sf/theme";
@@ -40,26 +40,35 @@ function LoginPage() {
   }, [ready, state.user, navigate]);
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-background lg:grid-cols-[1.05fr_0.95fr]">
-      <section className="hidden flex-col justify-between border-r border-border bg-surface px-12 py-10 lg:flex">
-        <div className="flex items-center gap-3">
+    <div className="login-page grid min-h-screen grid-cols-1 bg-background lg:grid-cols-[1.12fr_0.88fr]">
+      <section className="login-story relative hidden flex-col justify-between overflow-hidden px-12 py-10 lg:flex">
+        <img
+          src="/ocean-freight.png"
+          alt="Container ship crossing calm ocean waters"
+          className="login-ocean"
+        />
+        <div className="relative flex items-center gap-3">
           <img src="/sentinel-mark.svg" alt="" className="h-9 w-9" aria-hidden />
           <div className="space-y-0.5">
             <p className="text-[15px] leading-4 font-semibold tracking-tight">Sentinel Flash</p>
-            <p className="text-[9px] leading-3 font-medium tracking-[0.08em] text-muted-foreground uppercase">Disruption control tower</p>
+            <p className="text-[9px] leading-3 font-medium tracking-[0.08em] text-muted-foreground uppercase">
+              Disruption control tower
+            </p>
           </div>
         </div>
 
-        <div className="max-w-md">
-          <p className="label-xs">Supply-chain problem solver</p>
+        <div className="login-story-copy relative max-w-lg">
+          <p className="label-xs">INTELLIGENCE IN MOTION</p>
           <h1 className="mt-2 text-3xl leading-tight font-semibold tracking-tight text-foreground">
-            Sense. Decide. Act.
+            A world in motion.
+            <br />
+            <span>A step ahead.</span>
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Sentinel Flash checks for shipping problems, compares recovery plans, blocks unsafe choices,
-            and applies only the plans it is allowed to apply.
+            Sentinel Flash checks for shipping problems, compares recovery plans, blocks unsafe
+            choices, and applies only the plans it is allowed to apply.
           </p>
-          <dl className="mt-8 space-y-3 border-t border-border pt-6 text-sm">
+          <dl className="login-capabilities mt-8 grid grid-cols-2 gap-5 border-t border-white/20 pt-6 text-sm">
             {[
               ["Automatic action", "Safe, low-risk plans can be applied automatically."],
               ["Safety blocks", "A plan that breaks temperature rules is always blocked."],
@@ -67,31 +76,37 @@ function LoginPage() {
               ["Decision history", "Every applied plan keeps its reason and system steps."],
             ].map(([t, d]) => (
               <div key={t}>
-                <dt className="font-medium text-foreground">{t}</dt>
+                <dt className="flex items-center gap-2 font-medium">
+                  <Check size={14} />
+                  {t}
+                </dt>
                 <dd className="text-muted-foreground">{d}</dd>
               </div>
             ))}
           </dl>
         </div>
 
-        <p className="text-[11px] text-muted-foreground">
+        <p className="relative text-[11px] text-white/70">
           {state.systemStatus.mode === "LIVE"
             ? "Live provider mode. Every signal displays its provider and data status."
             : "Demo provider mode. Simulated evidence is explicitly labeled."}
         </p>
       </section>
 
-      <section className="flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm">
+      <section className="login-access flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-[410px]">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <p className="label-xs">Operations access</p>
-              <h2 className="text-lg font-semibold tracking-tight">Sign in to the control tower</h2>
+              <p className="label-xs">YOUR OPERATIONS WORKSPACE</p>
+              <h2 className="text-lg font-semibold tracking-tight">Welcome aboard.</h2>
             </div>
             <ThemeToggle />
           </div>
 
-          <fieldset className="space-y-2">
+          <p className="mb-8 text-sm leading-relaxed text-muted-foreground">
+            One workspace for a more resilient supply chain. Choose your role to get started.
+          </p>
+          <fieldset className="space-y-3">
             <legend className="label-xs pb-1">Select role</legend>
             {DEMO_USERS.map((u) => {
               const active = role === u.role;
@@ -103,8 +118,10 @@ function LoginPage() {
                   onClick={() => setRole(u.role)}
                   aria-pressed={active}
                   className={cn(
-                    "flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors",
-                    active ? "border-primary bg-accent" : "border-border bg-surface hover:bg-accent/60",
+                    "role-card flex w-full items-start gap-4 rounded-xl border p-5 text-left transition-colors",
+                    active
+                      ? "border-primary bg-accent"
+                      : "border-border bg-surface hover:bg-accent/60",
                   )}
                 >
                   <Icon className="mt-0.5 h-4 w-4 text-primary" aria-hidden />
@@ -121,18 +138,21 @@ function LoginPage() {
           </fieldset>
 
           <Button
-            className="mt-5 w-full"
+            className="mt-6 h-12 w-full"
             onClick={() => {
               login(role);
               navigate({ to: role === "approver" ? "/approver" : "/planner", replace: true });
             }}
           >
-            Enter control tower
+            Enter control tower <ArrowRight size={16} />
           </Button>
 
+          <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
+            <ShieldCheck size={15} /> Role-based access · Auditable decisions
+          </div>
           <p className="mt-4 text-[11px] leading-snug text-muted-foreground">
-            Demo accounts. Role permissions are enforced inside the application: a Planner cannot approve,
-            reject or override a pending decision.
+            Demo accounts. Role permissions are enforced inside the application: a Planner cannot
+            approve, reject or override a pending decision.
           </p>
         </div>
       </section>

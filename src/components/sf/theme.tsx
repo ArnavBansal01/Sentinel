@@ -2,7 +2,7 @@ import { Moon, Sun } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
 type Theme = "light" | "dark";
-const KEY = "sf.theme.v2";
+const KEY = "sf.theme.v3";
 
 const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
   theme: "light",

@@ -57,7 +57,9 @@ const NAV_GROUPS = [
   },
 ] as const;
 
-const NAV = NAV_GROUPS.flatMap((group) => group.items);
+const NAV = NAV_GROUPS.flatMap<(typeof NAV_GROUPS)[number]["items"][number]>((group) => [
+  ...group.items,
+]);
 
 export function AppShell({
   children,
@@ -125,7 +127,7 @@ export function AppShell({
         isFullscreen && !document.fullscreenElement && "fixed inset-0 z-[100] h-[100dvh] w-screen",
       )}
     >
-      <aside className="app-sidebar hidden w-60 shrink-0 flex-col border-r border-border bg-surface md:flex">
+      <aside className="app-sidebar hidden w-60 shrink-0 flex-col border-r border-border bg-surface lg:flex">
         <Link
           to="/planner"
           aria-label="Sentinel Flash live overview"
@@ -175,12 +177,25 @@ export function AppShell({
           ))}
         </nav>
 
+        <div className="sidebar-assurance mx-4 mb-4 rounded-xl border border-border p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold">
+            <Sparkles size={15} /> Intelligence, with oversight
+          </div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+            Every action has a reason.
+            <br />
+            Every decision leaves a record.
+          </p>
+        </div>
         <DemoControls />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="app-header flex h-[72px] shrink-0 items-center justify-between gap-5 border-b border-border/70 bg-surface/90 px-4 backdrop-blur-xl sm:px-6 [&_button]:rounded-full">
           <div className="min-w-0">
+            <p className="header-breadcrumb">
+              Workspace <span>/</span> Operations
+            </p>
             <h1 className="truncate text-xl font-semibold tracking-[-0.025em]">{title}</h1>
             {subtitle && (
               <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>
@@ -215,7 +230,9 @@ export function AppShell({
               <SheetContent className="overflow-y-auto border-border bg-surface">
                 <SheetHeader>
                   <SheetTitle>Live updates</SheetTitle>
-                  <SheetDescription>New backend events appear here automatically.</SheetDescription>
+                  <SheetDescription>
+                    Shipment alerts and decision updates, together in one place.
+                  </SheetDescription>
                 </SheetHeader>
                 <div className="mt-5 space-y-2">
                   {notifications.length === 0 ? (
@@ -247,7 +264,7 @@ export function AppShell({
               </SheetContent>
             </Sheet>
             {state.user && (
-              <div className="hidden items-center gap-2 border-l border-border pl-3 sm:flex">
+              <div className="hidden items-center gap-2 border-l border-border pl-3 xl:flex">
                 <div className="text-right leading-tight">
                   <p className="text-xs font-medium">{state.user.name}</p>
                   <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
@@ -273,7 +290,7 @@ export function AppShell({
 
         <SystemStatusBar />
 
-        <nav className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-border bg-surface px-3 py-2 md:hidden">
+        <nav className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-border bg-surface px-3 py-2 lg:hidden">
           {NAV.map((item) => (
             <Link
               key={item.to}
@@ -318,14 +335,14 @@ function SystemStatusBar() {
         </span>
         {healthy ? `${s.mode} SYSTEM` : "BACKEND OFFLINE"}
       </span>
-      {item("Trained LLM", "target design", Sparkles)}
+      {item("Intelligence", s.gemini, Sparkles)}
 
       {item("News", s.news, Radio)}
       {item("Weather", s.weather, Radio)}
       {item("AIS", s.ais, Radio)}
       {item("Database", s.database, Database)}
       <span className="status-chip ml-auto hidden whitespace-nowrap rounded-full border border-current/15 bg-background/20 px-2.5 py-1.5 opacity-75 xl:inline">
-        Every data source is clearly labeled
+        Source transparency enabled
       </span>
     </div>
   );

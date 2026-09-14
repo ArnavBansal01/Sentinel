@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Lock, ShieldCheck } from "lucide-react";
+import { Check, X, Lock, ShieldCheck } from "lucide-react";
 
 import { useSentinel } from "@/lib/sf/store";
-import { dateTime, usdExact } from "@/lib/sf/format";
+import { approvalReasonLabel, dateTime, usdExact } from "@/lib/sf/format";
 import type { WorkflowRun } from "@/lib/sf/types";
 import { Badge, Button } from "./ui";
 
@@ -40,7 +40,7 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
   };
 
   return (
-    <div className="rounded-lg border border-warning/45 bg-surface p-3">
+    <div className="approval-workbench rounded-2xl border border-border bg-surface p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-warning" aria-hidden />
@@ -49,7 +49,9 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
           </span>
           <Badge tone="warning">{timedReview ? "Auto-commit pending" : "Not applied"}</Badge>
         </div>
-        <span className="num text-[11px] text-muted-foreground">Decision {decision.id}</span>
+        <span className="num break-all text-[10px] text-muted-foreground">
+          Decision {decision.id}
+        </span>
       </div>
 
       {timedReview && decision.review_deadline_iso && (
@@ -65,7 +67,7 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
       <ul className="mt-2 space-y-1">
         {decision.approval_reasons.map((r) => (
           <li key={r} className="text-xs text-foreground">
-            • {r}
+            • {approvalReasonLabel(r)}
           </li>
         ))}
       </ul>
@@ -89,11 +91,12 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
         <div className="mt-3 space-y-2.5 border-t border-border pt-3">
           <label className="block">
             <span className="label-xs">Review note (saved in decision history)</span>
-            <input
+            <textarea
+              rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Why did you make this choice?"
-              className="mt-1 w-full rounded-md border border-input bg-surface px-2.5 py-1.5 text-xs outline-none focus:border-ring"
+              className="mt-2 w-full resize-y rounded-lg border border-input bg-surface-muted px-3 py-3 text-xs leading-5 outline-none focus:border-ring"
             />
           </label>
 
@@ -104,10 +107,10 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
               disabled={submitting}
               onClick={() => act("approve")}
             >
-              Approve best plan
+              <Check size={14} /> Approve best plan
             </Button>
             <Button variant="danger" size="sm" disabled={submitting} onClick={() => act("reject")}>
-              Reject plan
+              <X size={14} /> Reject plan
             </Button>
           </div>
 
@@ -119,7 +122,7 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
               id="override-option"
               value={overrideId}
               onChange={(e) => setOverrideId(e.target.value)}
-              className="h-7 rounded-md border border-input bg-surface px-2 text-xs"
+              className="h-9 min-w-0 max-w-full rounded-lg border border-input bg-surface px-2 text-xs"
             >
               <option value="">Select a viable option…</option>
               {viable

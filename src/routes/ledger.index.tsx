@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Download, FileJson, Sheet } from "lucide-react";
 
+import { WorkspaceIntro } from "@/components/sf/OverviewHero";
 import { AppShell } from "@/components/sf/AppShell";
 import { RequireSession } from "@/components/sf/guard";
 import { Badge, Button, DecisionStateBadge, EmptyState, Panel } from "@/components/sf/ui";
@@ -37,7 +38,11 @@ function LedgerPage() {
   return (
     <AppShell
       title="Decision history"
-      subtitle={state.systemStatus.mode === "LIVE" ? "A saved record of every applied decision" : "Saved demo decisions, clearly labeled"}
+      subtitle={
+        state.systemStatus.mode === "LIVE"
+          ? "A saved record of every applied decision"
+          : "Saved demo decisions, clearly labeled"
+      }
       actions={
         <div className="flex items-center gap-2">
           <Badge tone="neutral">{entries.length} entries</Badge>
@@ -53,22 +58,19 @@ function LedgerPage() {
       }
     >
       <div className="p-4 sm:p-5 lg:p-6">
+        <WorkspaceIntro
+          eyebrow="DECISION INTELLIGENCE"
+          title="Every decision tells a story."
+          description="A traceable record of actions, outcomes, and the reasoning behind them."
+        />
         <div className="mb-5 grid gap-4 md:grid-cols-3">
           <AuditMetric
             label="Saved decisions"
             value={String(entries.length)}
             note="Records cannot be edited"
           />
-          <AuditMetric
-            label="Reasons saved"
-            value="100%"
-            note="Why this plan was chosen"
-          />
-          <AuditMetric
-            label="Steps saved"
-            value="Full"
-            note="Data, safety checks, and actions"
-          />
+          <AuditMetric label="Reasons saved" value="100%" note="Why this plan was chosen" />
+          <AuditMetric label="Steps saved" value="Full" note="Data, safety checks, and actions" />
         </div>
         <Panel
           title="All applied decisions"
@@ -140,7 +142,10 @@ function LedgerPage() {
           )}
         </Panel>
         <p className="mt-2 text-[11px] text-muted-foreground">
-          These records cannot be edited or deleted here. {state.systemStatus.mode === "LIVE" ? "Every row comes from the backend." : "Demo records are clearly marked."}
+          These records cannot be edited or deleted here.{" "}
+          {state.systemStatus.mode === "LIVE"
+            ? "Every row comes from the backend."
+            : "Demo records are clearly marked."}
         </p>
       </div>
     </AppShell>

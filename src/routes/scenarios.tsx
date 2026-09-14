@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BrainCircuit, GitBranch, Play } from "lucide-react";
 
+import { WorkspaceIntro } from "@/components/sf/OverviewHero";
 import { AppShell } from "@/components/sf/AppShell";
 import { RequireSession } from "@/components/sf/guard";
 import { Badge, Button, EmptyState, Panel } from "@/components/sf/ui";
@@ -21,6 +22,11 @@ function ScenariosPage() {
   return (
     <AppShell title="Recovery plans" subtitle="Sense → Simulate → Decide → Commit">
       <div className="space-y-5 p-4 sm:p-5 lg:p-6">
+        <WorkspaceIntro
+          eyebrow="RECOVERY INTELLIGENCE"
+          title="A better way forward."
+          description="Turn disruption signals into actionable recovery plans. Compare options and move with confidence."
+        />
         <Panel
           title="Create a recovery plan"
           subtitle="Inject a labelled demo disruption or check the currently available live data"
