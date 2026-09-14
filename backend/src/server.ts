@@ -138,22 +138,6 @@ app.post("/api/demo/orchestrate/:shipmentId", async (q, r, n) => {
     n(e);
   }
 });
-app.post("/api/prototype/orchestrate/:shipmentId", async (q, r, n) => {
-  try {
-    r.json(
-      await orchestrate(
-        q.params.shipmentId,
-        String(q.body?.requestId ?? q.header("idempotency-key") ?? randomUUID()) as ReturnType<
-          typeof randomUUID
-        >,
-        false,
-        true,
-      ),
-    );
-  } catch (e) {
-    n(e);
-  }
-});
 for (const kind of ["approval", "reject", "override"] as const)
   app.post(`/api/${kind}/:shipmentId`, async (q, r, n) => {
     try {

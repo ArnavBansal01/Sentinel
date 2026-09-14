@@ -47,7 +47,7 @@ interface SFContextValue {
   login: (r: Role) => void;
   logout: () => void;
   reset: () => void;
-  triggerScenario: (id: string, showcaseDemo?: boolean, prototypeMode?: boolean) => Promise<void>;
+  triggerScenario: (id: string, showcaseDemo?: boolean) => Promise<void>;
   resolveApproval: (id: string, a: ApprovalActionType, o?: string, n?: string) => Promise<void>;
   isBusy: (id: string) => boolean;
 }
@@ -160,14 +160,13 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     [],
   );
   const triggerScenario = useCallback(
-    async (id: string, showcaseDemo = false, prototypeMode = false) => {
+    async (id: string, showcaseDemo = false) => {
       if (busy[id]) return;
       setBusy((b) => ({ ...b, [id]: true }));
       setState((s) => ({ ...s, lastError: null }));
       const requestId = crypto.randomUUID();
       try {
-        const routeMode = prototypeMode ? "prototype/" : showcaseDemo ? "demo/" : "";
-        const r = await fetch(`${API}/api/${routeMode}orchestrate/${id}`, {
+        const r = await fetch(`${API}/api/${showcaseDemo ? "demo/" : ""}orchestrate/${id}`, {
           method: "POST",
           headers: { "content-type": "application/json", "idempotency-key": requestId },
           body: JSON.stringify({ requestId }),
@@ -431,7 +430,7 @@ function mapDisruption(d: any): DisruptionEvent {
     location,
     summary: d.exists
       ? d.explanation
-      : d.explanation || `The check did not find a disruption near ${location}.`,
+      : `The live checks did not find enough reliable evidence of a disruption near ${location}.`,
     verified: d.exists,
     sources: d.evidence.map((e: any) => ({
       id: e.id,
