@@ -20,7 +20,7 @@ import type { Decision, Signal } from "../src/types/domain.js";
 import { normalizeShipmentDraft } from "../src/shipments/editor.js";
 const sf = (id: string) => structuredClone(shipments.find((s) => s.id === id)!);
 const raw = {
-  options: ["reroute", "respeed", "switch_mode"].map((type) => ({
+  options: ["reroute", "respeed", "port_switch"].map((type) => ({
     type,
     status: "viable",
     costUsd: 1,
@@ -283,9 +283,9 @@ describe("integration", () => {
     expect(a.action.actionId).toBe(b.action.actionId);
     expect(repository.ledger().filter((x) => x.actionId === a.action.actionId)).toHaveLength(1);
   });
-  it("SF-1002 omits inapplicable re-speed and awaits cold-chain approval", async () => {
+  it("SF-1002 refuses unsafe re-speed and awaits cold-chain approval", async () => {
     const x: any = await orchestrate("SF-1002", randomUUID());
-    expect(x.decision.options.some((o: any) => o.type === "respeed")).toBe(false);
+    expect(x.decision.options.find((o: any) => o.type === "respeed").status).toBe("refused");
     expect(x.decision.options).toHaveLength(3);
     expect(x.decision.overallStatus).toBe("PENDING_APPROVAL");
   });

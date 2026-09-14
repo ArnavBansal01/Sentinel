@@ -3,9 +3,7 @@ const n = z.number().finite().nonnegative();
 export const optionTypes = [
   "reroute",
   "respeed",
-  "switch_mode",
   "port_switch",
-  "split_shipment",
   "hold_and_wait",
   "accept_loss",
 ] as const;

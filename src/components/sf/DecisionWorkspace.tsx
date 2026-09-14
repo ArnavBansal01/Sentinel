@@ -8,9 +8,7 @@ import { Badge } from "./ui";
 const TYPE_LABEL: Record<RecoveryOption["type"], string> = {
   reroute: "Reroute",
   respeed: "Re-speed",
-  switch_mode: "Air freight",
   port_switch: "Port switch",
-  split_shipment: "Split shipment",
   hold_and_wait: "Hold and wait",
   accept_loss: "Accept loss",
 };

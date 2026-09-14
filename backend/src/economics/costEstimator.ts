@@ -24,9 +24,7 @@ function projectedRisk(shipment: Shipment, type: OptionType): number {
   const multiplier: Record<OptionType, [number, number]> = {
     reroute: [0.55, 0],
     respeed: [0.78, 8],
-    switch_mode: [0.42, 7],
     port_switch: [0.6, 5],
-    split_shipment: [0.38, 8],
     hold_and_wait: [0.7, 4],
     accept_loss: [0.95, 20],
   };
@@ -37,13 +35,10 @@ function projectedRisk(shipment: Shipment, type: OptionType): number {
 
 function handlingCost(type: OptionType): number {
   if (type === "reroute") return config.economics.rerouteHandlingUsd;
-  if (type === "switch_mode") return config.economics.modeSwitchHandlingUsd;
   const rates: Record<OptionType, number> = {
     reroute: config.economics.rerouteHandlingUsd,
     respeed: config.economics.respeedHandlingUsd,
-    switch_mode: config.economics.modeSwitchHandlingUsd,
     port_switch: 38_000,
-    split_shipment: 52_000,
     hold_and_wait: 12_000,
     accept_loss: 0,
   };
@@ -52,12 +47,7 @@ function handlingCost(type: OptionType): number {
 
 function coldChainCost(shipment: Shipment, type: OptionType): number {
   if (!shipment.coldChain) return 0;
-  const rate =
-    type === "switch_mode" || type === "split_shipment"
-      ? 0.015
-      : type === "reroute" || type === "port_switch"
-        ? 0.01
-        : 0.005;
+  const rate = type === "reroute" || type === "port_switch" ? 0.01 : 0.005;
   return shipment.cargoValueUsd * rate;
 }
 
@@ -76,9 +66,7 @@ export function estimateRecoveryOption(
   const optionDays = route.distanceNm / optionSpeed / 24;
   const operatingDays = Math.max(0, optionDays - baselineDays);
   const fixedDelay: Partial<Record<OptionType, number>> = {
-    switch_mode: 0.5,
     port_switch: 1.8,
-    split_shipment: 1,
     hold_and_wait: 4,
     accept_loss: 0,
   };
@@ -86,14 +74,7 @@ export function estimateRecoveryOption(
     type === "respeed" ? 0 : route.etaDeltaDays + (fixedDelay[type] ?? 0.5),
   );
   const riskScore = projectedRisk(shipment, type);
-  const modalPremium =
-    type === "switch_mode"
-      ? shipment.cargoValueUsd * 0.075
-      : type === "split_shipment"
-        ? shipment.cargoValueUsd * 0.04
-        : type === "accept_loss"
-          ? shipment.cargoValueUsd * 0.1
-          : 0;
+  const modalPremium = type === "accept_loss" ? shipment.cargoValueUsd * 0.1 : 0;
   const breakdown: CostBreakdown = {
     bunkerFuelUsdPerTonne: config.economics.bunkerFuelUsdPerTonne,
     baselineFuelTonnes: roundOne(baseFuel),

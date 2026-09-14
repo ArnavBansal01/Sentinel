@@ -6,7 +6,7 @@ const finiteNonNegative = z
   .refine((n) => Number.isFinite(n) && n >= 0, "must be a finite non-negative number");
 
 export const ModelOptionSchema = z.object({
-  type: z.enum(["reroute", "respeed", "switch_mode"]),
+  type: z.enum(["reroute", "respeed", "port_switch"]),
   label: z.string().min(3).max(160),
   description: z.string().min(3).max(400),
   cost_usd: finiteNonNegative,
@@ -27,7 +27,7 @@ export const ModelDecisionSchema = z.object({
     risk_score: z.number().min(0).max(100),
     description: z.string().min(3).max(400),
   }),
-  recommended_option_type: z.enum(["reroute", "respeed", "switch_mode"]),
+  recommended_option_type: z.enum(["reroute", "respeed", "port_switch"]),
   rationale: z.string().min(10).max(1200),
   constraint_analysis: z.array(z.string().min(3).max(400)).min(1).max(6),
 });
@@ -43,20 +43,27 @@ export function validateModelDecision(
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     const where = issue?.path?.length ? issue.path.join(".") : "payload";
-    return { ok: false, reason: `schema validation failed at ${where}: ${issue?.message ?? "unknown"}` };
+    return {
+      ok: false,
+      reason: `schema validation failed at ${where}: ${issue?.message ?? "unknown"}`,
+    };
   }
   const value = parsed.data;
 
   const types = new Set(value.options.map((o) => o.type));
   if (types.size !== 3) {
-    return { ok: false, reason: "exactly one reroute, one respeed and one switch_mode option are required" };
+    return {
+      ok: false,
+      reason: "exactly one reroute, one respeed and one port_switch option are required",
+    };
   }
 
   // Rule A guard: a cold-chain shipment whose decision flags nothing unsafe is not trustworthy.
   if (ctx.coldChain && !value.options.some((o) => o.breaks_cold_chain)) {
     return {
       ok: false,
-      reason: "cold-chain shipment returned with no unsafe option identified — unsafe business decision",
+      reason:
+        "cold-chain shipment returned with no unsafe option identified — unsafe business decision",
     };
   }
 

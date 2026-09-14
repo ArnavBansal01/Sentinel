@@ -93,14 +93,7 @@ export interface DisruptionAssessment {
   evidence: Signal[];
   providers: ProviderStatus[];
 }
-export type OptionType =
-  | "reroute"
-  | "respeed"
-  | "switch_mode"
-  | "port_switch"
-  | "split_shipment"
-  | "hold_and_wait"
-  | "accept_loss";
+export type OptionType = "reroute" | "respeed" | "port_switch" | "hold_and_wait" | "accept_loss";
 
 export type RiskTier = 1 | 2 | 3 | 4;
 export interface RiskCriterion {

@@ -48,10 +48,11 @@ const SF_1001: DraftDecision = {
       breaksColdChain: false,
     },
     {
-      id: "SF-1001-switch",
-      type: "switch_mode",
+      id: "SF-1001-port",
+      type: "port_switch",
       label: "Switch discharge port to Antwerp + barge",
-      description: "Moves the call to an unaffected port with barge transfer to the Rotterdam hinterland.",
+      description:
+        "Moves the call to an unaffected port with barge transfer to the Rotterdam hinterland.",
       cost_usd: 31400,
       days_added: 0.5,
       fuel_pct: 2.2,
@@ -79,10 +80,11 @@ const SF_1002: DraftDecision = {
   recommended_option_id: "SF-1002-reroute",
   options: [
     {
-      id: "SF-1002-switch",
-      type: "switch_mode",
-      label: "Switch mode — tranship at Djibouti to regional feeder",
-      description: "Cheapest recovery on paper: discharge, yard-stage and re-load onto a regional feeder.",
+      id: "SF-1002-port",
+      type: "port_switch",
+      label: "Switch discharge port at Djibouti",
+      description:
+        "Cheapest recovery on paper: discharge, yard-stage and re-load onto a regional feeder.",
       cost_usd: 58000,
       days_added: 2.0,
       fuel_pct: 1.4,
@@ -97,7 +99,8 @@ const SF_1002: DraftDecision = {
       id: "SF-1002-reroute",
       type: "reroute",
       label: "Reroute — Cape of Good Hope, continuous reefer power",
-      description: "Longer ocean leg on the same hull; reefer plugs powered throughout, no handover.",
+      description:
+        "Longer ocean leg on the same hull; reefer plugs powered throughout, no handover.",
       cost_usd: 96500,
       days_added: 6.0,
       fuel_pct: 12.4,
@@ -109,7 +112,8 @@ const SF_1002: DraftDecision = {
       id: "SF-1002-respeed",
       type: "respeed",
       label: "Hold at anchorage, then re-speed +2.4 kn on reopening",
-      description: "Retains the canal routing but burns heavily to recover the lost window after reopening.",
+      description:
+        "Retains the canal routing but burns heavily to recover the lost window after reopening.",
       cost_usd: 132000,
       days_added: 3.2,
       fuel_pct: 18.1,
@@ -161,8 +165,8 @@ const SF_1003: DraftDecision = {
       breaksColdChain: false,
     },
     {
-      id: "SF-1003-switch",
-      type: "switch_mode",
+      id: "SF-1003-port",
+      type: "port_switch",
       label: "Switch discharge port to Oakland + rail to LA basin",
       description: "Discharges north of the affected approach and rails the boxes south.",
       cost_usd: 214000,
@@ -226,9 +230,9 @@ export function fallbackDraft(shipment: Shipment): DraftDecision {
         breaksColdChain: false,
       },
       {
-        id: `${shipment.id}-switch`,
-        type: "switch_mode",
-        label: "Switch mode / discharge port",
+        id: `${shipment.id}-port`,
+        type: "port_switch",
+        label: "Switch discharge port",
         description: "Alternate discharge with inland leg to the original destination.",
         cost_usd: Math.round(base * 1.7),
         days_added: 1.1,

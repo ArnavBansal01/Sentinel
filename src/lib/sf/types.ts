@@ -107,14 +107,7 @@ export interface DisruptionEvent {
   sources: EvidenceSource[];
 }
 
-export type OptionType =
-  | "reroute"
-  | "respeed"
-  | "switch_mode"
-  | "port_switch"
-  | "split_shipment"
-  | "hold_and_wait"
-  | "accept_loss";
+export type OptionType = "reroute" | "respeed" | "port_switch" | "hold_and_wait" | "accept_loss";
 export type OptionStatus = "viable" | "refused";
 
 export interface RiskCriterion {

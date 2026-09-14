@@ -23,7 +23,7 @@ export function routeFor(s: Shipment, type: OptionType): RoutePlan {
   const via =
     type === "reroute"
       ? { name: "Cape route", code: "CAPE", lat: -34.36, lon: 18.47 }
-      : type === "switch_mode" || type === "port_switch"
+      : type === "port_switch"
         ? (alt[s.destination.code] ?? s.destination)
         : {
             name: type === "hold_and_wait" ? "Bonded holding point" : "Optimized waypoint",
@@ -35,9 +35,7 @@ export function routeFor(s: Shipment, type: OptionType): RoutePlan {
   const factor: Record<OptionType, number> = {
     reroute: 1.18,
     respeed: 0.98,
-    switch_mode: 0.62,
     port_switch: 1.08,
-    split_shipment: 0.9,
     hold_and_wait: 1,
     accept_loss: 0,
   };

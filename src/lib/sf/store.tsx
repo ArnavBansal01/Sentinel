@@ -63,9 +63,7 @@ const Context = createContext<SFContextValue | null>(null),
 const ACTIVE_OPTION_TYPES = new Set([
   "reroute",
   "respeed",
-  "switch_mode",
   "port_switch",
-  "split_shipment",
   "hold_and_wait",
   "accept_loss",
 ]);
