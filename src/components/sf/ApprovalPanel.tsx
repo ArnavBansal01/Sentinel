@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Lock, ShieldCheck } from "lucide-react";
 
 import { useSentinel } from "@/lib/sf/store";
-import { usdExact } from "@/lib/sf/format";
+import { dateTime, usdExact } from "@/lib/sf/format";
 import type { WorkflowRun } from "@/lib/sf/types";
 import { Badge, Button } from "./ui";
 
@@ -19,13 +19,19 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
   const isApprover = state.user?.role === "approver";
   const recommended = decision.options.find((o) => o.id === decision.recommended_option_id);
   const viable = decision.options.filter((o) => o.status === "viable");
+  const timedReview = decision.auto_commit_after_review === true;
 
   const act = async (type: "approve" | "reject" | "override") => {
     if (submitting) return;
     setSubmitting(true);
     setError("");
     try {
-      await resolveApproval(run.shipmentId, type, type === "override" ? overrideId : undefined, note);
+      await resolveApproval(
+        run.shipmentId,
+        type,
+        type === "override" ? overrideId : undefined,
+        note,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Approval action failed");
     } finally {
@@ -38,11 +44,23 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-warning" aria-hidden />
-          <span className="text-sm font-semibold">Waiting for human review</span>
-          <Badge tone="warning">Not applied</Badge>
+          <span className="text-sm font-semibold">
+            {timedReview ? "Two-hour review window" : "Waiting for required human review"}
+          </span>
+          <Badge tone="warning">{timedReview ? "Auto-commit pending" : "Not applied"}</Badge>
         </div>
         <span className="num text-[11px] text-muted-foreground">Decision {decision.id}</span>
       </div>
+
+      {timedReview && decision.review_deadline_iso && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Change, reject, or approve this plan before{" "}
+          <span className="num font-semibold text-foreground">
+            {dateTime(decision.review_deadline_iso)}
+          </span>
+          . If untouched, the recommended plan is applied automatically.
+        </p>
+      )}
 
       <ul className="mt-2 space-y-1">
         {decision.approval_reasons.map((r) => (
@@ -63,7 +81,8 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
         <div className="mt-3 flex items-start gap-2 rounded-md border border-border bg-surface-muted p-2.5">
           <Lock className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" aria-hidden />
           <p className="text-xs text-muted-foreground">
-            A Planner can view this plan but cannot approve it. Sign in as Approver to make the final decision.
+            A Planner can view this plan but cannot approve it. Sign in as Approver to make the
+            final decision.
           </p>
         </div>
       ) : (
@@ -79,7 +98,12 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
           </label>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="success" size="sm" disabled={submitting} onClick={() => act("approve")}>
+            <Button
+              variant="success"
+              size="sm"
+              disabled={submitting}
+              onClick={() => act("approve")}
+            >
               Approve best plan
             </Button>
             <Button variant="danger" size="sm" disabled={submitting} onClick={() => act("reject")}>
@@ -118,7 +142,11 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
               Blocked plans cannot be selected because they break a safety rule.
             </span>
           </div>
-          {error && <p className="text-xs text-danger" role="alert">{error}</p>}
+          {error && (
+            <p className="text-xs text-danger" role="alert">
+              {error}
+            </p>
+          )}
         </div>
       )}
     </div>

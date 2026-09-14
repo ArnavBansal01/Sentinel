@@ -128,6 +128,8 @@ export interface Decision {
   constraint_analysis: string[];
   approval_reasons: string[];
   refusals: { optionId: string; reason: string; constraint: string }[];
+  review_deadline_iso?: string;
+  auto_commit_after_review?: boolean;
 }
 
 export type ApprovalActionType = "approve" | "reject" | "override";

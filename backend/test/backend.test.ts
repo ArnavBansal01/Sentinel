@@ -9,7 +9,7 @@ import { SenseAgent } from "../src/agents/sense/senseAgent.js";
 import { GeminiDecisionSchema } from "../src/agents/decide/decisionSchema.js";
 import { applyPolicy } from "../src/policy/policyEngine.js";
 import { shipments } from "../src/shipments/seed.js";
-import { orchestrate, approve } from "../src/orchestrator.js";
+import { orchestrate, approve, commitExpiredReviews } from "../src/orchestrator.js";
 import { app } from "../src/server.js";
 import { repository } from "../src/persistence/database.js";
 import { eventBus } from "../src/events/eventBus.js";
@@ -162,6 +162,7 @@ describe("route-specific economics", () => {
 describe("integration", () => {
   beforeAll(() => {
     process.env["SENTINEL_MODE"] = "demo";
+    process.env["SYSTEM_REVIEW_WINDOW_MS"] = "0";
   });
   it("SF-1001 runs Sense-Decide-Policy-Act and is idempotent", async () => {
     const id = randomUUID(),
@@ -230,6 +231,26 @@ describe("integration", () => {
     );
     expect(result.decision.provider).toBe("deterministic_demo");
     expect(repository.demoInjection(shipment.id)).toBeUndefined();
+  });
+
+  it("holds eligible system decisions for review and commits them after the deadline", async () => {
+    process.env["SYSTEM_REVIEW_WINDOW_MS"] = "7200000";
+    try {
+      const result: any = await orchestrate("SF-2042", randomUUID(), true);
+      expect(result.action).toBeNull();
+      expect(result.decision.overallStatus).toBe("PENDING_APPROVAL");
+      expect(result.decision.autoCommitAfterReview).toBe(true);
+      expect(Date.parse(result.decision.reviewDeadlineIso)).toBeGreaterThan(Date.now());
+
+      result.decision.reviewDeadlineIso = new Date(Date.now() - 1_000).toISOString();
+      repository.updateDecision(result.decision);
+      const committed = await commitExpiredReviews();
+      expect(committed).toContain("SF-2042");
+      expect(repository.shipment("SF-2042")?.currentState).toBe("COMMITTED");
+      expect(repository.actionByDecision(result.decision.id)).toBeTruthy();
+    } finally {
+      process.env["SYSTEM_REVIEW_WINDOW_MS"] = "0";
+    }
   });
 
   it("supports approver approve, reject and viable override outcomes", async () => {

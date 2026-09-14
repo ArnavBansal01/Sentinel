@@ -56,6 +56,8 @@ export const repository = {
     db
       .prepare("INSERT INTO decisions(id,request_id,shipment_id,json) VALUES(?,?,?,?)")
       .run(d.id, d.requestId, d.shipmentId, JSON.stringify(d)),
+  updateDecision: (d: Decision) =>
+    db.prepare("UPDATE decisions SET json=? WHERE id=?").run(JSON.stringify(d), d.id),
   decision: (shipmentId: string) => {
     const r = db
       .prepare("SELECT json FROM decisions WHERE shipment_id=? ORDER BY rowid DESC LIMIT 1")
@@ -67,6 +69,18 @@ export const repository = {
       .prepare("SELECT json FROM decisions ORDER BY rowid DESC")
       .all()
       .map(parse<Decision>),
+  expiredTimedReviews: (nowIso: string) =>
+    db
+      .prepare("SELECT json FROM decisions ORDER BY rowid DESC")
+      .all()
+      .map(parse<Decision>)
+      .filter(
+        (decision) =>
+          decision.overallStatus === "PENDING_APPROVAL" &&
+          decision.autoCommitAfterReview === true &&
+          Boolean(decision.reviewDeadlineIso) &&
+          decision.reviewDeadlineIso! <= nowIso,
+      ),
   workflowResults: () =>
     db
       .prepare("SELECT result_json FROM requests WHERE result_json IS NOT NULL ORDER BY rowid DESC")

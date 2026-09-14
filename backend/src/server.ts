@@ -7,7 +7,7 @@ import { eventBus } from "./events/eventBus.js";
 import { SenseAgent } from "./agents/sense/senseAgent.js";
 import { DecideAgent } from "./agents/decide/decideAgent.js";
 import { ActAgent } from "./agents/act/actAgent.js";
-import { orchestrate, approve } from "./orchestrator.js";
+import { orchestrate, approve, commitExpiredReviews } from "./orchestrator.js";
 import { aisRuntimeStatus } from "./connectors/ais/aisStreamConnector.js";
 import type { ActivityEvent, Decision, DecisionOption } from "./types/domain.js";
 export const app = express();
@@ -56,7 +56,7 @@ app.get("/api/workflows", (_q, r) => {
     seen.add(shipmentId);
     const shipment = repository.shipment(shipmentId);
     if (!shipment) return [];
-    const decision = stored["decision"] as Decision | null;
+    const decision = repository.decision(shipmentId) ?? (stored["decision"] as Decision | null);
     const storedAction = decision ? repository.actionByDecision(decision.id) : undefined;
     const action = storedAction ? JSON.parse(storedAction.json) : stored["action"];
     return [
@@ -327,7 +327,17 @@ app.use(
     });
   },
 );
-if (process.env["NODE_ENV"] !== "test")
+if (process.env["NODE_ENV"] !== "test") {
   app.listen(config.port, () =>
     console.info(`[SYSTEM] Sentinel backend on http://localhost:${config.port} (${config.mode})`),
   );
+  const reviewTimer = setInterval(
+    () =>
+      commitExpiredReviews().catch((error) =>
+        console.error("[SYSTEM] Timed review sweep failed", error),
+      ),
+    15_000,
+  );
+  reviewTimer.unref();
+  void commitExpiredReviews();
+}

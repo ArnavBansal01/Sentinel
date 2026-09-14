@@ -5,6 +5,13 @@ import { ActAgent } from "./agents/act/actAgent.js";
 import { repository, db } from "./persistence/database.js";
 import { publish } from "./events/eventBus.js";
 import type { LedgerEntry } from "./types/domain.js";
+
+const DEFAULT_REVIEW_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+function reviewWindowMs() {
+  const configured = Number(process.env["SYSTEM_REVIEW_WINDOW_MS"] ?? DEFAULT_REVIEW_WINDOW_MS);
+  return Number.isFinite(configured) && configured >= 0 ? configured : DEFAULT_REVIEW_WINDOW_MS;
+}
 export async function orchestrate(
   shipmentId: string,
   requestId: string = randomUUID(),
@@ -89,6 +96,22 @@ export async function orchestrate(
     requestId,
     forceDemo || Boolean(injectedDisruption),
   );
+  const timedReview = decision.overallStatus === "AUTO_COMMIT" && reviewWindowMs() > 0;
+  if (timedReview) {
+    decision.overallStatus = "PENDING_APPROVAL";
+    decision.autoCommitAfterReview = true;
+    decision.reviewDeadlineIso = new Date(Date.now() + reviewWindowMs()).toISOString();
+    publish(
+      traceId,
+      "policy",
+      "policy.review_window_started",
+      shipment.id,
+      `Optional approver review open until ${decision.reviewDeadlineIso}`,
+      { reviewDeadlineIso: decision.reviewDeadlineIso },
+    );
+  } else if (decision.overallStatus === "PENDING_APPROVAL") {
+    decision.autoCommitAfterReview = false;
+  }
   repository.saveDecision(decision);
   let action: unknown = null;
   if (decision.overallStatus === "AUTO_COMMIT") {
@@ -130,8 +153,23 @@ export async function approve(
   if (!s || !d) throw Object.assign(new Error("Pending decision not found"), { status: 404 });
   if (s.currentState !== "PENDING_APPROVAL")
     throw Object.assign(new Error("Shipment is not pending approval"), { status: 409 });
+  if (
+    d.autoCommitAfterReview &&
+    d.reviewDeadlineIso &&
+    Date.parse(d.reviewDeadlineIso) <= Date.now()
+  ) {
+    await commitExpiredReviews();
+    throw Object.assign(
+      new Error("The two-hour review window has ended and the plan was applied"),
+      {
+        status: 409,
+      },
+    );
+  }
   const traceId = randomUUID();
   if (kind === "reject") {
+    d.autoCommitAfterReview = false;
+    repository.updateDecision(d);
     s.currentState = "ESCALATED";
     s.status = "escalated";
     repository.saveShipment(s);
@@ -169,7 +207,35 @@ export async function approve(
     d.recommendedOption = target.id;
   }
   d.overallStatus = kind === "approve" ? "APPROVED" : "OVERRIDDEN";
+  d.autoCommitAfterReview = false;
+  repository.updateDecision(d);
   s.currentState = "APPROVED";
   repository.saveShipment(s);
   return new ActAgent().run(s, d, traceId, `HUMAN / APPROVER (${kind})`);
+}
+
+export async function commitExpiredReviews(now = new Date()) {
+  const committed: string[] = [];
+  for (const decision of repository.expiredTimedReviews(now.toISOString())) {
+    const shipment = repository.shipment(decision.shipmentId);
+    const latest = repository.decision(decision.shipmentId);
+    if (!shipment || shipment.currentState !== "PENDING_APPROVAL" || latest?.id !== decision.id)
+      continue;
+
+    const traceId = randomUUID();
+    decision.overallStatus = "AUTO_COMMIT";
+    decision.autoCommitAfterReview = false;
+    repository.updateDecision(decision);
+    publish(
+      traceId,
+      "policy",
+      "policy.review_window_expired",
+      shipment.id,
+      "No approver change was made; applying the recommended plan automatically",
+      { reviewDeadlineIso: decision.reviewDeadlineIso },
+    );
+    await new ActAgent().run(shipment, decision, traceId, "SYSTEM / REVIEW WINDOW EXPIRED");
+    committed.push(shipment.id);
+  }
+  return committed;
 }

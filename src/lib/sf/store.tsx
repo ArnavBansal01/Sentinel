@@ -124,6 +124,26 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
         ...s,
         activity: [event, ...s.activity.filter((x) => x.id !== event.id)].slice(0, 200),
       }));
+      if (event.type === "ledger.appended") {
+        void Promise.all([
+          fetch(`${API}/api/shipments`).then((response) => response.json()),
+          fetch(`${API}/api/workflows`).then((response) => response.json()),
+          fetch(`${API}/api/ledger`).then((response) => response.json()),
+        ]).then(([shipments, workflows, ledger]) =>
+          setState((current) => ({
+            ...current,
+            shipments: mergeShipments(shipments as Shipment[]),
+            runs: Object.fromEntries(
+              (workflows as any[]).map((workflow) => {
+                const run = mapRun(workflow);
+                if (workflow.persistedState === "ESCALATED") run.state = "REJECTED_ESCALATED";
+                return [run.shipmentId, run];
+              }),
+            ),
+            ledger: (ledger as any[]).map(mapBackendLedger),
+          })),
+        );
+      }
     });
     const healthPoll = window.setInterval(() => {
       fetch(`${API}/api/health`)
@@ -452,6 +472,8 @@ function mapRun(p: any): WorkflowRun {
       ? bd.policyRulesTriggered
       : ["All deterministic policy rules evaluated."],
     approval_reasons: bd.policyRulesTriggered,
+    review_deadline_iso: bd.reviewDeadlineIso,
+    auto_commit_after_review: bd.autoCommitAfterReview,
     refusals: bd.options
       .filter((o: any) => o.status === "refused")
       .map((o: any) => ({ optionId: o.id, reason: o.policyReasons[0], constraint: "cold-chain" })),

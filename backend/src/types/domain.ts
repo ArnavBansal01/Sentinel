@@ -126,6 +126,8 @@ export interface Decision {
   providerStatus: "completed" | "provider_failed" | "demo";
   policyRulesTriggered: string[];
   createdAt: string;
+  reviewDeadlineIso?: string;
+  autoCommitAfterReview?: boolean;
 }
 export interface ActivityEvent {
   id: string;

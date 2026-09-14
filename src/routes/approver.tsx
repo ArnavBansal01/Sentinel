@@ -1,10 +1,31 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/sf/AppShell";
 import { RequireSession } from "@/components/sf/guard";
 import { Badge, EmptyState, Panel } from "@/components/sf/ui";
 import { sinceLabel, usdExact } from "@/lib/sf/format";
 import { useSentinel } from "@/lib/sf/store";
+
+function ReviewWindow({ deadlineIso }: { deadlineIso: string | undefined }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!deadlineIso) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [deadlineIso]);
+
+  if (!deadlineIso) return <span className="text-warning">Manual approval required</span>;
+  const remaining = Math.max(0, Date.parse(deadlineIso) - now);
+  const hours = Math.floor(remaining / 3_600_000);
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
+  const seconds = Math.floor((remaining % 60_000) / 1_000);
+  return (
+    <span className="font-semibold text-primary">
+      {remaining > 0 ? `Auto-commit in ${hours}h ${minutes}m ${seconds}s` : "Auto-commit starting…"}
+    </span>
+  );
+}
 
 export const Route = createFileRoute("/approver")({
   head: () => ({
@@ -42,35 +63,46 @@ function ApproverPage() {
       title="Review decisions"
       subtitle={
         isApprover
-          ? "Plans that need a person to approve them"
-          : "View only — switch to Approver to make a decision"
+          ? "Change system plans during their two-hour window or review safety-gated plans"
+          : "View only — switch to Approver to change a plan"
       }
-      actions={<Badge tone={pending.length ? "warning" : "neutral"}>{pending.length} pending</Badge>}
+      actions={
+        <Badge tone={pending.length ? "warning" : "neutral"}>{pending.length} pending</Badge>
+      }
     >
       <div className="space-y-5 p-4 sm:p-5 lg:p-6">
         <Panel title="Waiting for review" bodyClassName="overflow-x-auto">
           {pending.length === 0 ? (
             <EmptyState
               title="No decisions awaiting approval"
-              description="A plan appears here when its value, delay, fuel use, or temperature risk needs a person to check it."
+              description="New eligible system plans remain changeable here for two hours before automatic commitment."
             />
           ) : (
             <table className="w-full min-w-[880px] text-left text-xs">
               <thead className="border-b border-border text-muted-foreground">
                 <tr>
-                  {["Shipment", "Route", "Why review is needed", "Cargo value", "Risk", "Waiting", "Best plan", ""].map(
-                    (h) => (
-                      <th key={h} className="px-3 py-2 font-semibold tracking-wide uppercase">
-                        {h}
-                      </th>
-                    ),
-                  )}
+                  {[
+                    "Shipment",
+                    "Route",
+                    "Why review is needed",
+                    "Cargo value",
+                    "Risk",
+                    "Review window",
+                    "Best plan",
+                    "",
+                  ].map((h) => (
+                    <th key={h} className="px-3 py-2 font-semibold tracking-wide uppercase">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {pending.map((run) => {
                   const shipment = state.shipments.find((s) => s.id === run.shipmentId)!;
-                  const rec = run.decision?.options.find((o) => o.id === run.decision?.recommended_option_id);
+                  const rec = run.decision?.options.find(
+                    (o) => o.id === run.decision?.recommended_option_id,
+                  );
                   return (
                     <tr key={run.shipmentId} className="hover:bg-accent/50">
                       <td className="num px-3 py-2.5 font-semibold">{run.shipmentId}</td>
@@ -78,11 +110,22 @@ function ApproverPage() {
                         {shipment.origin.name} → {shipment.destination.name}
                       </td>
                       <td className="max-w-[280px] px-3 py-2.5 text-muted-foreground">
-                        {run.decision?.approval_reasons[0]}
+                        {run.decision?.approval_reasons[0] ??
+                          (run.decision?.auto_commit_after_review
+                            ? "Optional two-hour approver review"
+                            : "Policy requires human approval")}
                       </td>
                       <td className="num px-3 py-2.5">{usdExact(shipment.cargoValueUsd)}</td>
                       <td className="num px-3 py-2.5">{rec?.risk_score ?? shipment.riskScore}</td>
-                      <td className="num px-3 py-2.5">{sinceLabel(run.startedAtIso)}</td>
+                      <td className="num px-3 py-2.5">
+                        {run.decision?.auto_commit_after_review ? (
+                          <ReviewWindow deadlineIso={run.decision.review_deadline_iso} />
+                        ) : (
+                          <span title={`Waiting ${sinceLabel(run.startedAtIso)}`}>
+                            Manual approval required
+                          </span>
+                        )}
+                      </td>
                       <td className="px-3 py-2.5">
                         {rec ? `${rec.label} · ${usdExact(rec.cost_usd)}` : "—"}
                       </td>
