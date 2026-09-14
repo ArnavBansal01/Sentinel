@@ -145,7 +145,7 @@ function ShipmentDetail() {
           ))}
           {run?.decision?.source && (
             <span className="num ml-auto text-[11px] text-muted-foreground">
-              Plan made by: {run.decision.sourceNote === "demo" ? "Demo logic" : run.decision.source === "gemini" ? "Gemini AI" : "Backup logic"}
+              Plan made by: {run.decision.sourceNote === "demo" ? "Demo logic" : run.decision.source === "gemini" ? "Gemini runtime (MVP) · trained LLM is target architecture" : "Backup logic"}
               {run.decision.sourceNote ? ` · ${run.decision.sourceNote}` : ""}
             </span>
           )}

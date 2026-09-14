@@ -136,7 +136,7 @@ function LedgerDetail() {
             label="Plan made by"
             value={
               <Badge tone={entry.decisionSource === "gemini" ? "info" : "neutral"}>
-                {entry.decisionSource === "gemini" ? "Gemini AI" : "Demo or backup logic"}
+                {entry.decisionSource === "gemini" ? "Gemini runtime (MVP) · trained LLM target" : "Demo or backup logic"}
               </Badge>
             }
           />
