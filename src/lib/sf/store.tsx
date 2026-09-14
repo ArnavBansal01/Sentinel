@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { DEMO_USERS, SEED_ACTIVITY, SEED_LEDGER, SEED_SHIPMENTS } from "./seed";
+import { approvalReasonLabel } from "./format";
 import type {
   ActResult,
   ApprovalActionType,
@@ -59,6 +60,15 @@ interface SFContextValue {
 const Context = createContext<SFContextValue | null>(null),
   STORAGE_KEY = "sf.session.role",
   API = import.meta.env["VITE_API_BASE_URL"] ?? "http://localhost:8787";
+const ACTIVE_OPTION_TYPES = new Set([
+  "reroute",
+  "respeed",
+  "switch_mode",
+  "port_switch",
+  "split_shipment",
+  "hold_and_wait",
+  "accept_loss",
+]);
 const initial = (): SFState => ({
   user: null,
   shipments: structuredClone(SEED_SHIPMENTS),
@@ -299,6 +309,24 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       setState((s) => {
         const old = s.runs[id];
         if (!old) return s;
+        if (p.status === "SECONDARY_REVIEW_REQUIRED") {
+          return {
+            ...s,
+            runs: {
+              ...s.runs,
+              [id]: {
+                ...old,
+                decision: {
+                  ...old.decision!,
+                  secondary_approval_required: true,
+                  approval_steps_completed: p.decision?.approvalStepsCompleted ?? 1,
+                  recommended_option_id:
+                    p.decision?.recommendedOption ?? old.decision!.recommended_option_id,
+                },
+              },
+            },
+          };
+        }
         if (action === "reject")
           return {
             ...s,
@@ -507,6 +535,20 @@ function mapRun(p: any): WorkflowRun {
     };
   }
   const bd = p.decision;
+  if (bd.options.some((option: any) => !ACTIVE_OPTION_TYPES.has(option.type))) {
+    return {
+      shipmentId: p.shipment.id,
+      requestId: p.requestId,
+      version: 0,
+      state: "DISRUPTION_DETECTED",
+      startedAtIso: d.detectedAt,
+      disruption: mapDisruption(d),
+      decision: null,
+      approval: null,
+      act: null,
+      error: null,
+    };
+  }
   const mappedStatus = mapDecisionStatus(bd.overallStatus, Boolean(p.action));
   const decision: Decision = {
     id: bd.id,
@@ -517,8 +559,8 @@ function mapRun(p: any): WorkflowRun {
     sourceNote: bd.providerStatus,
     options: bd.options.map((o: any) => ({
       id: o.id,
-      type: o.type === "switch_mode" ? "switch_mode" : o.type,
-      label: o.type.replace("_", " "),
+      type: o.type,
+      label: String(o.type).replaceAll("_", " "),
       description: o.reason,
       cost_usd: o.costUsd,
       days_added: o.delayDays,
@@ -531,6 +573,23 @@ function mapRun(p: any): WorkflowRun {
       refusal_reason: o.policyReasons[0],
       constraint: o.policyReasons[0],
       cost_breakdown: mapCostBreakdown(o.costBreakdown),
+      feasibility: o.feasibility,
+      risk_assessment: o.riskAssessment
+        ? {
+            tier: o.riskAssessment.tier,
+            label: o.riskAssessment.label,
+            score: o.riskAssessment.score,
+            behavior: o.riskAssessment.behavior,
+            hard_overrides: o.riskAssessment.hardOverrides ?? [],
+            criteria: (o.riskAssessment.criteria ?? []).map((criterion: any) => ({
+              key: criterion.key,
+              label: criterion.label,
+              score: criterion.score,
+              detail: criterion.detail,
+              included_in_total: criterion.includedInTotal,
+            })),
+          }
+        : undefined,
     })),
     do_nothing: {
       cost_usd: bd.doNothing.costUsd,
@@ -544,11 +603,13 @@ function mapRun(p: any): WorkflowRun {
     overall_status: mappedStatus,
     rationale: bd.reasoning,
     constraint_analysis: bd.policyRulesTriggered.length
-      ? bd.policyRulesTriggered
+      ? bd.policyRulesTriggered.map(approvalReasonLabel)
       : ["All deterministic policy rules evaluated."],
     approval_reasons: bd.policyRulesTriggered,
     review_deadline_iso: bd.reviewDeadlineIso,
     auto_commit_after_review: bd.autoCommitAfterReview,
+    secondary_approval_required: bd.secondaryApprovalRequired,
+    approval_steps_completed: bd.approvalStepsCompleted,
     refusals: bd.options
       .filter((o: any) => o.status === "refused")
       .map((o: any) => ({ optionId: o.id, reason: o.policyReasons[0], constraint: "cold-chain" })),
@@ -604,21 +665,26 @@ function mapDisruption(d: any): DisruptionEvent {
 }
 
 function mapDecisionStatus(status: string, acted: boolean): Decision["overall_status"] {
-  if (status === "AUTO_COMMIT") return acted ? "AUTO_COMMITTED" : "DECISION_READY";
+  if (["AUTO_COMMIT", "AUTO_COMMIT_NOTIFY"].includes(status))
+    return acted ? "AUTO_COMMITTED" : "DECISION_READY";
   if (status === "APPROVED") return acted ? "APPROVED_COMMITTED" : "PENDING_APPROVAL";
   if (status === "OVERRIDDEN") return acted ? "OVERRIDDEN_COMMITTED" : "PENDING_APPROVAL";
   if (status === "PENDING_APPROVAL") return "PENDING_APPROVAL";
+  if (status === "ESCALATED") return "PENDING_APPROVAL";
   if (status === "POLICY_REFUSED") return "REJECTED_ESCALATED";
   return "DECISION_READY";
 }
 function mapAct(a: any): ActResult {
+  const committedType = a.decision?.options?.find(
+    (o: any) => o.id === a.decision.recommendedOption,
+  )?.type;
   return {
     committedOptionId: a.decision?.recommendedOption ?? "",
     committedLabel:
       a.decision?.options?.find((o: any) => o.id === a.decision.recommendedOption)?.type ??
       "Committed route",
     executedAtIso: new Date().toISOString(),
-    routeRedrawn: true,
+    routeRedrawn: committedType !== "accept_loss",
     partnersNotified: [a.notification?.delivery ?? "simulated_external_delivery"],
     ledgerRef: a.ledgerId ?? "",
     simulated: a.notification?.delivery !== "delivered",
@@ -633,7 +699,9 @@ function mapLedger(a: any): LedgerEntry {
     decision:
       a.decision?.options?.find((o: any) => o.id === a.decision.recommendedOption)?.type ??
       "Decision",
-    status: a.decision?.overallStatus === "AUTO_COMMIT" ? "AUTO_COMMITTED" : "APPROVED_COMMITTED",
+    status: ["AUTO_COMMIT", "AUTO_COMMIT_NOTIFY"].includes(a.decision?.overallStatus)
+      ? "AUTO_COMMITTED"
+      : "APPROVED_COMMITTED",
     actorType: "system",
     actorName: "Backend orchestration",
     reference: a.ledgerId ?? "",
@@ -651,7 +719,7 @@ function mapBackendLedger(entry: any): LedgerEntry {
   const status: LedgerEntry["status"] =
     entry.eventType === "DECISION_REJECTED"
       ? "REJECTED_ESCALATED"
-      : decision.overallStatus === "AUTO_COMMIT"
+      : ["AUTO_COMMIT", "AUTO_COMMIT_NOTIFY"].includes(decision.overallStatus)
         ? "AUTO_COMMITTED"
         : decision.overallStatus === "OVERRIDDEN"
           ? "OVERRIDDEN_COMMITTED"
@@ -678,8 +746,8 @@ function mapBackendLedger(entry: any): LedgerEntry {
   }));
   const options = (decision.options ?? []).map((o: any) => ({
     id: o.id,
-    type: o.type === "switch_mode" ? "switch_mode" : o.type,
-    label: o.type?.replace("_", " ") ?? "option",
+    type: o.type,
+    label: o.type?.replaceAll("_", " ") ?? "option",
     description: o.reason,
     cost_usd: o.costUsd,
     days_added: o.delayDays,
@@ -692,6 +760,23 @@ function mapBackendLedger(entry: any): LedgerEntry {
     refusal_reason: o.policyReasons?.[0],
     constraint: o.policyReasons?.[0],
     cost_breakdown: mapCostBreakdown(o.costBreakdown),
+    feasibility: o.feasibility,
+    risk_assessment: o.riskAssessment
+      ? {
+          tier: o.riskAssessment.tier,
+          label: o.riskAssessment.label,
+          score: o.riskAssessment.score,
+          behavior: o.riskAssessment.behavior,
+          hard_overrides: o.riskAssessment.hardOverrides ?? [],
+          criteria: (o.riskAssessment.criteria ?? []).map((criterion: any) => ({
+            key: criterion.key,
+            label: criterion.label,
+            score: criterion.score,
+            detail: criterion.detail,
+            included_in_total: criterion.includedInTotal,
+          })),
+        }
+      : undefined,
   }));
   return {
     id: entry.id,

@@ -5,6 +5,11 @@ import { routeFor } from "../../routing/routeEngine.js";
 import { applyPolicy } from "../../policy/policyEngine.js";
 import { publish } from "../../events/eventBus.js";
 import {
+  optionFeasibility,
+  RECOVERY_DESCRIPTIONS,
+  selectApplicableRecoveryTypes,
+} from "../../recovery/recoveryOptions.js";
+import {
   estimateDoNothing,
   estimateRecoveryOption,
   optionValueScore,
@@ -16,14 +21,9 @@ import type {
   OptionType,
   Shipment,
 } from "../../types/domain.js";
-function demo() {
-  const specs: Record<OptionType, string> = {
-    reroute: "Avoid the disrupted corridor using validated waypoints.",
-    respeed: "Increase speed on safe legs to recover schedule.",
-    switch_mode: "Use an alternative port and protected onward transport.",
-  };
+function demo(selectedTypes: OptionType[]) {
   return {
-    options: (Object.keys(specs) as OptionType[]).map((type) => {
+    options: selectedTypes.map((type) => {
       return {
         type,
         status: "viable" as const,
@@ -31,7 +31,7 @@ function demo() {
         delayDays: 0,
         fuelTonnes: 0,
         riskScore: 0,
-        reason: specs[type],
+        reason: RECOVERY_DESCRIPTIONS[type],
       };
     }),
     doNothing: {
@@ -41,7 +41,7 @@ function demo() {
       riskScore: 0,
       reason: "No recovery action is taken.",
     },
-    recommendedOption: "reroute" as const,
+    recommendedOption: selectedTypes[0]!,
     reasoning:
       "Compared route feasibility, voyage time, fuel, cargo exposure, handling cost, risk, and the cost of taking no action.",
   };
@@ -62,12 +62,13 @@ export class DecideAgent {
       s.id,
       useDemo ? "Demo decision started" : "AI decision started",
     );
+    const selectedTypes = selectApplicableRecoveryTypes(s, d);
     const result = useDemo
       ? ({ ok: false, reason: "showcase_demo" } as const)
-      : await askGemini(s, d);
+      : await askGemini(s, d, selectedTypes);
     if (!result.ok && !useDemo)
       throw Object.assign(new Error(result.reason), { code: "GEMINI_PROVIDER_FAILED" });
-    const raw = result.ok ? result.value : demo();
+    const raw = result.ok ? result.value : demo(selectedTypes);
     const options: DecisionOption[] = raw.options.map((o) => {
       const route = routeFor(s, o.type);
       return {
@@ -75,11 +76,12 @@ export class DecideAgent {
         ...estimateRecoveryOption(s, o.type, route),
         id: `${requestId}-${o.type}`,
         policyReasons: [],
+        feasibility: optionFeasibility(o.type),
         route,
       };
     });
     const eligibleForRecommendation = options.filter(
-      (option) => !(s.coldChain && option.type === "respeed"),
+      (option) => option.feasibility !== "unavailable",
     );
     const recommended = [...eligibleForRecommendation].sort(
       (a, b) => optionValueScore(a) - optionValueScore(b),
@@ -117,7 +119,7 @@ export class DecideAgent {
       `${decision.provider} decision schema validation passed`,
     );
     publish(traceId, "policy", "policy.started", s.id, "Deterministic policy evaluation started");
-    applyPolicy(s, decision);
+    applyPolicy(s, d, decision);
     for (const o of options.filter((x) => x.status === "refused"))
       publish(traceId, "policy", "policy.refusal", s.id, o.policyReasons.join(" "), o);
     if (decision.overallStatus === "PENDING_APPROVAL")

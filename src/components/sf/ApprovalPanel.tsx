@@ -20,6 +20,8 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
   const recommended = decision.options.find((o) => o.id === decision.recommended_option_id);
   const viable = decision.options.filter((o) => o.status === "viable");
   const timedReview = decision.auto_commit_after_review === true;
+  const criticalReview = decision.secondary_approval_required === true;
+  const approvalStep = decision.approval_steps_completed ?? 0;
 
   const act = async (type: "approve" | "reject" | "override") => {
     if (submitting) return;
@@ -45,9 +47,19 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-warning" aria-hidden />
           <span className="text-sm font-semibold">
-            {timedReview ? "Two-hour review window" : "Waiting for required human review"}
+            {timedReview
+              ? "Two-hour review window"
+              : criticalReview
+                ? "Tier 4 critical review"
+                : "Waiting for required human review"}
           </span>
-          <Badge tone="warning">{timedReview ? "Auto-commit pending" : "Not applied"}</Badge>
+          <Badge tone={criticalReview ? "danger" : "warning"}>
+            {timedReview
+              ? "Auto-commit pending"
+              : criticalReview
+                ? `${approvalStep}/2 approvals`
+                : "Not applied"}
+          </Badge>
         </div>
         <span className="num break-all text-[10px] text-muted-foreground">
           Decision {decision.id}
@@ -61,6 +73,13 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
             {dateTime(decision.review_deadline_iso)}
           </span>
           . If untouched, the recommended plan is applied automatically.
+        </p>
+      )}
+
+      {criticalReview && (
+        <p className="mt-2 rounded-lg border border-danger/30 bg-danger-surface p-2.5 text-xs leading-5 text-danger">
+          Critical decisions need two review confirmations. The first approval records the review;
+          the second approval authorizes execution. This plan never auto-commits.
         </p>
       )}
 
@@ -107,7 +126,12 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
               disabled={submitting}
               onClick={() => act("approve")}
             >
-              <Check size={14} /> Approve best plan
+              <Check size={14} />
+              {criticalReview
+                ? approvalStep === 0
+                  ? "Record first approval"
+                  : "Complete secondary approval"
+                : "Approve best plan"}
             </Button>
             <Button variant="danger" size="sm" disabled={submitting} onClick={() => act("reject")}>
               <X size={14} /> Reject plan

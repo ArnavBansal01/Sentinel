@@ -53,6 +53,8 @@ export const ShipmentDraftSchema = z
     owner: z.string().trim().max(120).optional().default(""),
     notes: z.string().trim().max(1_000).optional().default(""),
     constraints: z.array(z.string().trim().min(2).max(240)).max(12).default([]),
+    shelfLifeDays: z.coerce.number().positive().max(3650).optional(),
+    downstreamCriticality: z.coerce.number().int().min(0).max(3).optional(),
   })
   .superRefine((draft, context) => {
     if (draft.originCode.toUpperCase() === draft.destinationCode.toUpperCase()) {
@@ -127,12 +129,16 @@ export function normalizeShipmentDraft(input: unknown, actor: string): Shipment 
     riskScore,
     status: "monitoring",
     coldChain,
-    temperatureMinC: draft.temperatureMinC ?? undefined,
-    temperatureMaxC: draft.temperatureMaxC ?? undefined,
+    ...(draft.temperatureMinC != null ? { temperatureMinC: draft.temperatureMinC } : {}),
+    ...(draft.temperatureMaxC != null ? { temperatureMaxC: draft.temperatureMaxC } : {}),
     priority: draft.priority,
-    reference: draft.reference || undefined,
-    owner: draft.owner || undefined,
-    notes: draft.notes || undefined,
+    ...(draft.reference ? { reference: draft.reference } : {}),
+    ...(draft.owner ? { owner: draft.owner } : {}),
+    ...(draft.notes ? { notes: draft.notes } : {}),
+    ...(draft.shelfLifeDays !== undefined ? { shelfLifeDays: draft.shelfLifeDays } : {}),
+    ...(draft.downstreamCriticality !== undefined
+      ? { downstreamCriticality: draft.downstreamCriticality as 0 | 1 | 2 | 3 }
+      : {}),
     constraints,
     demoScenario: false,
     currentState: "MONITORED",
@@ -211,6 +217,8 @@ export async function parseShipmentText(text: string): Promise<ShipmentDraft> {
           owner: { type: "string" },
           notes: { type: "string" },
           constraints: { type: "array", items: { type: "string" } },
+          shelfLifeDays: { type: "number", minimum: 0.01 },
+          downstreamCriticality: { type: "number", minimum: 0, maximum: 3 },
         },
       },
     },

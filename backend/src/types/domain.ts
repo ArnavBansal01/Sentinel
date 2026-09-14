@@ -46,6 +46,8 @@ export interface Shipment {
   reference?: string;
   owner?: string;
   notes?: string;
+  shelfLifeDays?: number;
+  downstreamCriticality?: 0 | 1 | 2 | 3;
   createdAtIso?: string;
   createdBy?: string;
   selectedRoute?: RoutePlan | undefined;
@@ -91,7 +93,40 @@ export interface DisruptionAssessment {
   evidence: Signal[];
   providers: ProviderStatus[];
 }
-export type OptionType = "reroute" | "respeed" | "switch_mode";
+export type OptionType =
+  | "reroute"
+  | "respeed"
+  | "switch_mode"
+  | "port_switch"
+  | "split_shipment"
+  | "hold_and_wait"
+  | "accept_loss";
+
+export type RiskTier = 1 | 2 | 3 | 4;
+export interface RiskCriterion {
+  key:
+    | "time_impact"
+    | "cost_impact"
+    | "shelf_life"
+    | "lateness_impact"
+    | "regulatory_delay"
+    | "cargo_value"
+    | "detection_confidence"
+    | "feasibility"
+    | "downstream_exposure";
+  label: string;
+  score: number;
+  detail: string;
+  includedInTotal: boolean;
+}
+export interface RiskAssessment {
+  tier: RiskTier;
+  label: "Negligible" | "Low" | "Elevated" | "Critical";
+  score: number;
+  criteria: RiskCriterion[];
+  hardOverrides: string[];
+  behavior: "AUTO_COMMIT" | "AUTO_COMMIT_NOTIFY" | "PENDING_APPROVAL" | "ESCALATED";
+}
 export interface CostBreakdown {
   bunkerFuelUsdPerTonne: number;
   baselineFuelTonnes: number;
@@ -113,6 +148,8 @@ export interface DecisionOption {
   riskScore: number;
   reason: string;
   policyReasons: string[];
+  feasibility: "confirmed" | "uncertain" | "unavailable";
+  riskAssessment?: RiskAssessment;
   route?: RoutePlan;
   costBreakdown?: CostBreakdown;
 }
@@ -139,6 +176,8 @@ export interface Decision {
   createdAt: string;
   reviewDeadlineIso?: string;
   autoCommitAfterReview?: boolean;
+  secondaryApprovalRequired?: boolean;
+  approvalStepsCompleted?: number;
 }
 export interface ActivityEvent {
   id: string;

@@ -251,7 +251,9 @@ function ApproverPage() {
                       </td>
                       <td className="num px-3 py-2.5">{usdExact(shipment?.cargoValueUsd ?? 0)}</td>
                       <td className="num px-3 py-2.5">
-                        {rec?.risk_score ?? shipment?.riskScore ?? "—"}
+                        {rec?.risk_assessment
+                          ? `Tier ${rec.risk_assessment.tier} · ${rec.risk_assessment.label}`
+                          : (rec?.risk_score ?? shipment?.riskScore ?? "—")}
                       </td>
                       <td className="px-3 py-2.5">
                         {rec ? `${rec.label} · ${usdExact(rec.cost_usd)}` : "—"}
@@ -322,6 +324,19 @@ function ApproverPage() {
                 {selected.decision?.options.filter((o) => o.status === "viable").length ?? 0} viable
                 options · {selected.decision?.refusals.length ?? 0} safety refusals
               </div>
+              {recommendation?.risk_assessment && (
+                <div className="mt-3 rounded-lg border border-border bg-surface-muted p-3">
+                  <span className="label-xs">Risk decision</span>
+                  <p className="mt-1 text-sm font-semibold">
+                    Tier {recommendation.risk_assessment.tier} ·{" "}
+                    {recommendation.risk_assessment.label}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Score {recommendation.risk_assessment.score}/18 ·{" "}
+                    {recommendation.risk_assessment.behavior.replaceAll("_", " ").toLowerCase()}
+                  </p>
+                </div>
+              )}
               <Link
                 to="/shipment/$id"
                 params={{ id: selected.shipmentId }}

@@ -167,7 +167,7 @@ app.post("/api/act/:shipmentId", async (q, r, n) => {
     const s = repository.shipment(q.params.shipmentId),
       d = repository.decision(q.params.shipmentId);
     if (!s || !d) return r.status(409).json({ error: "decision_required" });
-    if (d.overallStatus === "PENDING_APPROVAL")
+    if (["PENDING_APPROVAL", "ESCALATED"].includes(d.overallStatus))
       return r.status(409).json({ error: "approval_required" });
     r.json(await new ActAgent().run(s, d, String(q.body?.traceId ?? randomUUID())));
   } catch (e) {
@@ -294,6 +294,11 @@ app.get("/api/ledger/export", (q, r) => {
         selected?.delayDays,
         selected?.fuelTonnes,
         selected?.riskScore,
+        selected?.riskAssessment?.tier,
+        selected?.riskAssessment?.label,
+        selected?.riskAssessment?.score,
+        selected?.riskAssessment?.criteria,
+        selected?.riskAssessment?.hardOverrides,
         selected?.costBreakdown?.bunkerFuelUsdPerTonne,
         selected?.costBreakdown?.fuelUsd,
         selected?.costBreakdown?.vesselTimeUsd,
@@ -324,6 +329,11 @@ app.get("/api/ledger/export", (q, r) => {
         "delay_days",
         "fuel_tonnes",
         "risk_score",
+        "risk_tier",
+        "risk_tier_label",
+        "risk_factor_score_out_of_18",
+        "risk_factor_breakdown",
+        "risk_hard_overrides",
         "bunker_fuel_usd_per_tonne",
         "fuel_cost_usd",
         "vessel_time_cost_usd",

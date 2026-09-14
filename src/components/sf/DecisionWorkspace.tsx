@@ -8,7 +8,11 @@ import { Badge } from "./ui";
 const TYPE_LABEL: Record<RecoveryOption["type"], string> = {
   reroute: "Reroute",
   respeed: "Re-speed",
-  switch_mode: "Switch mode / port",
+  switch_mode: "Air freight",
+  port_switch: "Port switch",
+  split_shipment: "Split shipment",
+  hold_and_wait: "Hold and wait",
+  accept_loss: "Accept loss",
 };
 
 function Row({ label, value, tone }: { label: string; value: string; tone?: string | undefined }) {
@@ -56,6 +60,55 @@ function CostDetails({
   );
 }
 
+function RiskDetails({ option }: { option: RecoveryOption }) {
+  const risk = option.risk_assessment;
+  if (!risk) return null;
+  const tone =
+    risk.tier === 4 ? "danger" : risk.tier === 3 ? "warning" : risk.tier === 2 ? "info" : "success";
+  return (
+    <div className="mt-3 rounded-md border border-border bg-surface-muted px-2.5 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+          Explainable risk factors
+        </p>
+        <Badge tone={tone}>
+          Tier {risk.tier} · {risk.label}
+        </Badge>
+      </div>
+      <div className="mt-2 space-y-1.5">
+        {risk.criteria.map((item) => (
+          <div key={item.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-[10px]">
+            <span className="min-w-0 text-muted-foreground">
+              {item.label} · {item.detail}
+            </span>
+            <span
+              className={cn(
+                "num font-semibold",
+                item.score >= 3
+                  ? "text-danger"
+                  : item.score >= 2
+                    ? "text-warning"
+                    : "text-foreground",
+              )}
+            >
+              {item.included_in_total ? `${item.score}/3` : item.score ? "Gate" : "Clear"}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-[10px]">
+        <span className="font-semibold text-foreground">Scored total</span>
+        <span className="num font-semibold">{risk.score}/18</span>
+      </div>
+      {risk.hard_overrides.map((override) => (
+        <p key={override} className="mt-1 text-[10px] leading-snug text-danger">
+          • {override}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export function DoNothingCard({ baseline }: { baseline: DoNothingBaseline }) {
   return (
     <article className="flex flex-col rounded-lg border border-dashed border-border-strong bg-surface-muted p-3">
@@ -69,7 +122,9 @@ export function DoNothingCard({ baseline }: { baseline: DoNothingBaseline }) {
       <p className="num mt-2 text-2xl leading-none font-semibold text-foreground">
         {usdExact(baseline.cost_usd)}
       </p>
-      <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-warning">Planning estimate</p>
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-warning">
+        Planning estimate
+      </p>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{baseline.description}</p>
       <CostDetails breakdown={baseline.cost_breakdown} baseline />
       <div className="mt-3 border-t border-border pt-2">
@@ -112,25 +167,42 @@ export function RecoveryOptionCard({
               : "border-border",
       )}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-start justify-between gap-2">
         <span className="label-xs">{TYPE_LABEL[option.type]}</span>
-        {refused ? (
-          <Badge tone="danger" dot={false}>
-            <Ban className="h-3 w-3" /> Blocked
-          </Badge>
-        ) : committed ? (
-          <Badge tone="success" dot={false}>
-            <CheckCircle2 className="h-3 w-3" /> Applied
-          </Badge>
-        ) : recommended ? (
-          <Badge tone="info" dot={false}>
-            <CircleDot className="h-3 w-3" /> Best plan
-          </Badge>
-        ) : (
-          <Badge tone="neutral" dot={false}>
-            <Minus className="h-3 w-3" /> Allowed
-          </Badge>
-        )}
+        <div className="flex flex-wrap justify-end gap-1">
+          {option.risk_assessment && (
+            <Badge
+              tone={
+                option.risk_assessment.tier >= 4
+                  ? "danger"
+                  : option.risk_assessment.tier >= 3
+                    ? "warning"
+                    : option.risk_assessment.tier === 2
+                      ? "info"
+                      : "success"
+              }
+            >
+              Tier {option.risk_assessment.tier}
+            </Badge>
+          )}
+          {refused ? (
+            <Badge tone="danger" dot={false}>
+              <Ban className="h-3 w-3" /> Blocked
+            </Badge>
+          ) : committed ? (
+            <Badge tone="success" dot={false}>
+              <CheckCircle2 className="h-3 w-3" /> Applied
+            </Badge>
+          ) : recommended ? (
+            <Badge tone="info" dot={false}>
+              <CircleDot className="h-3 w-3" /> Best plan
+            </Badge>
+          ) : (
+            <Badge tone="neutral" dot={false}>
+              <Minus className="h-3 w-3" /> Allowed
+            </Badge>
+          )}
+        </div>
       </div>
 
       <h3 className="mt-1 text-sm leading-snug font-semibold">{option.label}</h3>
@@ -145,7 +217,9 @@ export function RecoveryOptionCard({
       >
         {usdExact(option.cost_usd)}
       </p>
-      <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-warning">Planning estimate</p>
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-warning">
+        Planning estimate
+      </p>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{option.description}</p>
 
       <CostDetails breakdown={option.cost_breakdown} />
@@ -168,6 +242,8 @@ export function RecoveryOptionCard({
           tone={refused ? "text-danger" : committed ? "text-success" : undefined}
         />
       </div>
+
+      <RiskDetails option={option} />
 
       {refused && (
         <div className="mt-3 rounded-md border border-danger/40 bg-danger-surface p-2.5">
@@ -195,23 +271,36 @@ export function DecisionComparison({ decision }: { decision: Decision }) {
         <div className="flex gap-2.5">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
           <div>
-            <p className="text-xs font-semibold text-foreground">Scenario estimates—not historical invoices or carrier quotes</p>
+            <p className="text-xs font-semibold text-foreground">
+              Scenario estimates—not historical invoices or carrier quotes
+            </p>
             <p className="mt-1 max-w-4xl text-[11px] leading-4 text-muted-foreground">
-              These values model the fictional shipment shown above using route distance and configured benchmark inputs.
-              Exact real-world costs require the carrier’s fuel purchase, charter, port, cargo, insurance, and contract records.
+              These values model the fictional shipment shown above using route distance and
+              configured benchmark inputs. Exact real-world costs require the carrier’s fuel
+              purchase, charter, port, cargo, insurance, and contract records.
             </p>
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-wide">
-          <a href="https://greenvoyage2050.imo.org/pdf/energy-efficiency-technologies-information-portal/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+          <a
+            href="https://greenvoyage2050.imo.org/pdf/energy-efficiency-technologies-information-portal/"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-primary hover:underline"
+          >
             Speed/fuel method <ExternalLink className="h-3 w-3" />
           </a>
-          <a href="https://unctad.org/system/files/official-document/rmt2023_en.pdf" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+          <a
+            href="https://unctad.org/system/files/official-document/rmt2023_en.pdf"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-primary hover:underline"
+          >
             Cost benchmark <ExternalLink className="h-3 w-3" />
           </a>
         </div>
       </div>
-      <div className="grid gap-3 xl:grid-cols-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <DoNothingCard baseline={decision.do_nothing} />
         {ordered.map((o) => (
           <RecoveryOptionCard key={o.id} option={o} decision={decision} />

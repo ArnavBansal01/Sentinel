@@ -1,16 +1,17 @@
 import { GoogleGenAI } from "@google/genai";
-import { GeminiDecisionSchema, type GeminiDecision } from "./decisionSchema.js";
-import type { Shipment, DisruptionAssessment } from "../../types/domain.js";
+import { GeminiDecisionSchema, optionTypes, type GeminiDecision } from "./decisionSchema.js";
+import type { Shipment, DisruptionAssessment, OptionType } from "../../types/domain.js";
 export async function askGemini(
   s: Shipment,
   d: DisruptionAssessment,
+  selectedTypes: OptionType[],
 ): Promise<{ ok: true; value: GeminiDecision } | { ok: false; reason: string }> {
   if (!process.env["GEMINI_API_KEY"]) return { ok: false, reason: "missing_api_key" };
   try {
     const ai = new GoogleGenAI({ apiKey: process.env["GEMINI_API_KEY"] });
     const response = await ai.models.generateContent({
       model: process.env["GEMINI_MODEL"] ?? "gemini-3.6-flash",
-      contents: `Generate exactly one reroute, one respeed, and one switch_mode option, plus doNothing, for this shipment.
+      contents: `Explain exactly these three recovery options: ${selectedTypes.join(", ")}, plus doNothing, for this shipment. Do not substitute another option type.
 
 Return JSON only and follow these numeric rules exactly:
 - Numeric cost, delay, fuel, and risk fields are provisional. Sentinel recalculates them with its route-specific voyage estimator before policy evaluation.
@@ -46,7 +47,7 @@ Evidence: ${JSON.stringify(d)}`,
                   "reason",
                 ],
                 properties: {
-                  type: { type: "string", enum: ["reroute", "respeed", "switch_mode"] },
+                  type: { type: "string", enum: [...optionTypes] },
                   status: { type: "string", enum: ["viable", "refused"] },
                   costUsd: { type: "number", minimum: 0 },
                   delayDays: {
@@ -75,16 +76,27 @@ Evidence: ${JSON.stringify(d)}`,
                 reason: { type: "string" },
               },
             },
-            recommendedOption: { type: "string", enum: ["reroute", "respeed", "switch_mode"] },
+            recommendedOption: { type: "string", enum: [...optionTypes] },
             reasoning: { type: "string" },
           },
         },
       },
     });
     const parsed = GeminiDecisionSchema.safeParse(JSON.parse(response.text ?? ""));
-    return parsed.success
-      ? { ok: true, value: parsed.data }
-      : { ok: false, reason: `malformed_response:${parsed.error.issues[0]?.message}` };
+    const returnedTypes = parsed.success
+      ? new Set(parsed.data.options.map((option) => option.type))
+      : null;
+    const matchesSelection =
+      returnedTypes &&
+      selectedTypes.every((type) => returnedTypes.has(type)) &&
+      returnedTypes.size === selectedTypes.length;
+    if (parsed.success && matchesSelection) return { ok: true, value: parsed.data };
+    return {
+      ok: false,
+      reason: parsed.success
+        ? "malformed_response:returned option types do not match the deterministic candidate set"
+        : `malformed_response:${parsed.error.issues[0]?.message}`,
+    };
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : "provider_failed" };
   }

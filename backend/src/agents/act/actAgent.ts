@@ -14,10 +14,11 @@ export class ActAgent {
     if (!option) throw new Error("No viable selected option");
     publish(traceId, "act", "act.started", s.id, "Action execution started");
     const actionId = randomUUID();
-    s.selectedRoute = option.route;
-    s.etaIso = new Date(Date.parse(s.etaIso) + option.delayDays * 86400000).toISOString();
+    s.selectedRoute = option.type === "accept_loss" ? undefined : option.route;
+    if (option.type !== "accept_loss")
+      s.etaIso = new Date(Date.parse(s.etaIso) + option.delayDays * 86400000).toISOString();
     s.riskScore = option.riskScore;
-    s.status = "recovered";
+    s.status = option.type === "accept_loss" ? "escalated" : "recovered";
     s.currentState = "COMMITTED";
     repository.saveShipment(s);
     publish(
@@ -25,7 +26,9 @@ export class ActAgent {
       "act",
       "act.route_updated",
       s.id,
-      `Route and ETA updated for ${option.type}`,
+      option.type === "accept_loss"
+        ? "Physical recovery stopped; insurance-claim workflow selected"
+        : `Route and ETA updated for ${option.type}`,
       s.selectedRoute,
     );
     const payload = { shipmentId: s.id, decisionId: d.id, option: option.type, newEta: s.etaIso };

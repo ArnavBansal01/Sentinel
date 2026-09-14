@@ -7,7 +7,7 @@ import { normalizeAisMessage } from "../src/connectors/ais/aisStreamConnector.js
 import { calculateConfidence } from "../src/agents/sense/confidence.js";
 import { SenseAgent } from "../src/agents/sense/senseAgent.js";
 import { GeminiDecisionSchema } from "../src/agents/decide/decisionSchema.js";
-import { applyPolicy } from "../src/policy/policyEngine.js";
+import { applyPolicy, computeRiskTier } from "../src/policy/policyEngine.js";
 import { shipments } from "../src/shipments/seed.js";
 import { orchestrate, approve, commitExpiredReviews } from "../src/orchestrator.js";
 import { app } from "../src/server.js";
@@ -15,6 +15,7 @@ import { repository } from "../src/persistence/database.js";
 import { eventBus } from "../src/events/eventBus.js";
 import { estimateRecoveryOption } from "../src/economics/costEstimator.js";
 import { routeFor } from "../src/routing/routeEngine.js";
+import { selectApplicableRecoveryTypes } from "../src/recovery/recoveryOptions.js";
 import type { Decision, Signal } from "../src/types/domain.js";
 import { normalizeShipmentDraft } from "../src/shipments/editor.js";
 const sf = (id: string) => structuredClone(shipments.find((s) => s.id === id)!);
@@ -145,6 +146,41 @@ describe("policy", () => {
     d.options[0]!.fuelTonnes = 1001;
     expect(applyPolicy(sf("SF-1001"), d).overallStatus).toBe("PENDING_APPROVAL");
   });
+  it("explains all risk factors and raises a low-confidence autonomy gate", () => {
+    const option: any = {
+      ...raw.options[0],
+      id: "risk-option",
+      costUsd: 5_000,
+      delayDays: 0.5,
+      feasibility: "confirmed",
+      policyReasons: [],
+    };
+    const risk = computeRiskTier(sf("SF-2045"), { confidence: 0.4 }, option);
+    expect(risk.tier).toBeGreaterThanOrEqual(3);
+    expect(risk.criteria).toHaveLength(9);
+    expect(risk.hardOverrides.join(" ")).toContain("confidence");
+  });
+  it("floors sanction or contested-corridor decisions at Tier 4", () => {
+    const shipment = sf("SF-2041");
+    shipment.constraints.push("War-risk approval may be denied in contested corridor");
+    const d = decision();
+    d.recommendedOption = "0";
+    d.options.forEach((option) => (option.feasibility = "confirmed"));
+    expect(applyPolicy(shipment, d).overallStatus).toBe("ESCALATED");
+  });
+});
+describe("recovery applicability", () => {
+  it("selects port-specific levers for a port disruption", () => {
+    const types = selectApplicableRecoveryTypes(sf("SF-2041"), {
+      type: "PORT_CONGESTION",
+      location: "Hamburg port",
+      explanation: "Berth congestion and customs delay",
+      severity: 55,
+    } as any);
+    expect(types).toContain("port_switch");
+    expect(types).toContain("hold_and_wait");
+    expect(types).toHaveLength(3);
+  });
 });
 describe("route-specific economics", () => {
   it("produces different costs for different routes and reconciles the breakdown", () => {
@@ -247,9 +283,10 @@ describe("integration", () => {
     expect(a.action.actionId).toBe(b.action.actionId);
     expect(repository.ledger().filter((x) => x.actionId === a.action.actionId)).toHaveLength(1);
   });
-  it("SF-1002 refuses unsafe option and awaits approval", async () => {
+  it("SF-1002 omits inapplicable re-speed and awaits cold-chain approval", async () => {
     const x: any = await orchestrate("SF-1002", randomUUID());
-    expect(x.decision.options.find((o: any) => o.type === "respeed").status).toBe("refused");
+    expect(x.decision.options.some((o: any) => o.type === "respeed")).toBe(false);
+    expect(x.decision.options).toHaveLength(3);
     expect(x.decision.overallStatus).toBe("PENDING_APPROVAL");
   });
   it("SF-1003 requires approval and planner is blocked", async () => {
@@ -275,7 +312,9 @@ describe("integration", () => {
       expect(result.shipment.id).toBe(shipment.id);
       expect(result.disruption.evidence.length).toBeGreaterThan(0);
       expect(result.decision).not.toBeNull();
-      expect(["AUTO_COMMIT", "PENDING_APPROVAL"]).toContain(result.decision.overallStatus);
+      expect(["AUTO_COMMIT", "AUTO_COMMIT_NOTIFY", "PENDING_APPROVAL", "ESCALATED"]).toContain(
+        result.decision.overallStatus,
+      );
     }
   });
 
@@ -289,7 +328,7 @@ describe("integration", () => {
       repository
         .workflowResults()
         .some((result) =>
-          cleared.includes(String((result.shipment as { id?: string } | undefined)?.id)),
+          cleared.includes(String((result["shipment"] as { id?: string } | undefined)?.id)),
         ),
     ).toBe(false);
     expect(repository.ledger().some((entry) => cleared.includes(entry.shipmentId))).toBe(false);
@@ -351,6 +390,44 @@ describe("integration", () => {
     const overridden: any = await approve("SF-1003", "override", "approver", alternative.id);
     expect(overridden.decision.recommendedOption).toBe(alternative.id);
     expect(repository.shipment("SF-1003")?.currentState).toBe("COMMITTED");
+  });
+
+  it("requires two approval confirmations for a Tier 4 decision", async () => {
+    const shipment = normalizeShipmentDraft(
+      {
+        id: "SF-TIER4",
+        originCode: "AEJEA",
+        destinationCode: "GBFXT",
+        cargo: "Critical relief medicine",
+        cargoCategory: "medicine",
+        quantity: 12,
+        quantityUnit: "tonnes",
+        cargoValueUsd: 2_000_000,
+        mode: "ocean",
+        vessel: "MV Critical Test",
+        etaIso: "2026-10-24T06:00:00.000Z",
+        priority: "critical",
+        constraints: ["War-risk approval may be denied in contested corridor", "No buffer stock"],
+        downstreamCriticality: 3,
+      },
+      "Test editor",
+    );
+    repository.createShipment(shipment);
+    try {
+      const run: any = await orchestrate(shipment.id, randomUUID(), true);
+      expect(run.decision.overallStatus).toBe("ESCALATED");
+      expect(run.decision.secondaryApprovalRequired).toBe(true);
+
+      const first: any = await approve(shipment.id, "approve", "approver");
+      expect(first.status).toBe("SECONDARY_REVIEW_REQUIRED");
+      expect(repository.shipment(shipment.id)?.currentState).toBe("PENDING_APPROVAL");
+
+      const second: any = await approve(shipment.id, "approve", "approver");
+      expect(second.actionId).toBeTruthy();
+      expect(repository.shipment(shipment.id)?.currentState).toBe("COMMITTED");
+    } finally {
+      repository.deleteShipment(shipment.id);
+    }
   });
 
   it("returns correct HTTP status and downloadable audit formats", async () => {

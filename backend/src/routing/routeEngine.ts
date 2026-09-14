@@ -23,26 +23,34 @@ export function routeFor(s: Shipment, type: OptionType): RoutePlan {
   const via =
     type === "reroute"
       ? { name: "Cape route", code: "CAPE", lat: -34.36, lon: 18.47 }
-      : type === "switch_mode"
+      : type === "switch_mode" || type === "port_switch"
         ? (alt[s.destination.code] ?? s.destination)
         : {
-            name: "Optimized waypoint",
+            name: type === "hold_and_wait" ? "Bonded holding point" : "Optimized waypoint",
             code: "OPT",
             lat: (s.origin.lat + s.destination.lat) / 2,
             lon: (s.origin.lon + s.destination.lon) / 2,
           };
   const base = greatCircleDistanceNm(s.origin, s.destination);
-  const factor = type === "reroute" ? 1.18 : type === "switch_mode" ? 1.08 : 0.98;
-  const d = Math.round(base * factor);
+  const factor: Record<OptionType, number> = {
+    reroute: 1.18,
+    respeed: 0.98,
+    switch_mode: 0.62,
+    port_switch: 1.08,
+    split_shipment: 0.9,
+    hold_and_wait: 1,
+    accept_loss: 0,
+  };
+  const d = Math.round(base * factor[type]);
   const delta = Math.max(
     0,
     Math.round(((d - base) / config.routing.vesselSpeedKnots / 24) * 10) / 10,
   );
   return {
-    points: [s.origin, via, s.destination],
+    points: type === "accept_loss" ? [s.origin] : [s.origin, via, s.destination],
     distanceNm: d,
     etaDeltaDays: delta,
     fuelDeltaTonnes: Math.round(Math.abs(d - base) * config.routing.fuelTonnesPerNm),
-    riskScore: type === "reroute" ? 24 : type === "respeed" ? 42 : 31,
+    riskScore: type === "reroute" ? 24 : type === "respeed" ? 42 : type === "accept_loss" ? 88 : 31,
   };
 }

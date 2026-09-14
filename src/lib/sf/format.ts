@@ -78,6 +78,12 @@ export function approvalReasonLabel(reason: string): string {
     TRANSIT_TIME_GT_7_DAYS: "Transit time exceeds seven days",
     CARGO_VALUE_AT_RISK_GT_1000000_USD: "Cargo value at risk exceeds $1 million",
     COLD_CHAIN_HUMAN_APPROVAL: "Temperature-controlled cargo requires human approval",
+    CAPACITY_CONFIRMATION_REQUIRED: "Recovery capacity must be confirmed before execution",
+    LOW_DETECTION_CONFIDENCE: "Detection confidence is too low for autonomous action",
+    RISK_TIER_1_NEGLIGIBLE: "Tier 1 · negligible operational risk",
+    RISK_TIER_2_LOW: "Tier 2 · low risk; notify the Planner",
+    RISK_TIER_3_ELEVATED: "Tier 3 · elevated risk; approval required",
+    RISK_TIER_4_CRITICAL: "Tier 4 · critical risk; two reviews required",
   };
   return labels[reason] ?? reason;
 }

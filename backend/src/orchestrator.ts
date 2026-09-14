@@ -96,7 +96,17 @@ export async function orchestrate(
     requestId,
     forceDemo || Boolean(injectedDisruption),
   );
-  const timedReview = decision.overallStatus === "AUTO_COMMIT" && reviewWindowMs() > 0;
+  const autonomousDecision = ["AUTO_COMMIT", "AUTO_COMMIT_NOTIFY"].includes(decision.overallStatus);
+  if (decision.overallStatus === "AUTO_COMMIT_NOTIFY") {
+    publish(
+      traceId,
+      "policy",
+      "policy.planner_notification_required",
+      shipment.id,
+      "Tier 2 decision is eligible for autonomous commit; Planner notification required",
+    );
+  }
+  const timedReview = autonomousDecision && reviewWindowMs() > 0;
   if (timedReview) {
     decision.overallStatus = "PENDING_APPROVAL";
     decision.autoCommitAfterReview = true;
@@ -109,20 +119,19 @@ export async function orchestrate(
       `Optional approver review open until ${decision.reviewDeadlineIso}`,
       { reviewDeadlineIso: decision.reviewDeadlineIso },
     );
-  } else if (decision.overallStatus === "PENDING_APPROVAL") {
+  } else if (["PENDING_APPROVAL", "ESCALATED"].includes(decision.overallStatus)) {
     decision.autoCommitAfterReview = false;
   }
   repository.saveDecision(decision);
   let action: unknown = null;
-  if (decision.overallStatus === "AUTO_COMMIT") {
+  if (["AUTO_COMMIT", "AUTO_COMMIT_NOTIFY"].includes(decision.overallStatus)) {
     shipment.currentState = "ACT_RUNNING";
     repository.saveShipment(shipment);
     action = await new ActAgent().run(shipment, decision, traceId);
   } else {
-    shipment.currentState =
-      decision.overallStatus === "PENDING_APPROVAL" ? "PENDING_APPROVAL" : "POLICY_REFUSED";
-    shipment.status =
-      decision.overallStatus === "PENDING_APPROVAL" ? "pending_approval" : "escalated";
+    const awaitingApproval = ["PENDING_APPROVAL", "ESCALATED"].includes(decision.overallStatus);
+    shipment.currentState = awaitingApproval ? "PENDING_APPROVAL" : "POLICY_REFUSED";
+    shipment.status = awaitingApproval ? "pending_approval" : "escalated";
     repository.saveShipment(shipment);
   }
   const result = {
@@ -167,6 +176,30 @@ export async function approve(
     );
   }
   const traceId = randomUUID();
+  const overrideTarget =
+    kind === "override"
+      ? d.options.find((option) => option.id === optionId && option.status === "viable")
+      : undefined;
+  if (kind === "override" && !overrideTarget)
+    throw Object.assign(new Error("Override option is not viable"), { status: 400 });
+  if (
+    kind !== "reject" &&
+    d.secondaryApprovalRequired === true &&
+    (d.approvalStepsCompleted ?? 0) < 1
+  ) {
+    if (overrideTarget) d.recommendedOption = overrideTarget.id;
+    d.approvalStepsCompleted = 1;
+    repository.updateDecision(d);
+    publish(
+      traceId,
+      "policy",
+      "policy.secondary_review_required",
+      s.id,
+      "Tier 4 first approval recorded; secondary review still required",
+      { approvalStepsCompleted: 1, approvalStepsRequired: 2 },
+    );
+    return { shipment: s, decision: d, status: "SECONDARY_REVIEW_REQUIRED" };
+  }
   if (kind === "reject") {
     d.autoCommitAfterReview = false;
     repository.updateDecision(d);
@@ -202,9 +235,7 @@ export async function approve(
     return { shipment: s, decision: d, status: "REJECTED", ledgerId: ledger.id };
   }
   if (kind === "override") {
-    const target = d.options.find((o) => o.id === optionId && o.status === "viable");
-    if (!target) throw Object.assign(new Error("Override option is not viable"), { status: 400 });
-    d.recommendedOption = target.id;
+    d.recommendedOption = overrideTarget!.id;
   }
   d.overallStatus = kind === "approve" ? "APPROVED" : "OVERRIDDEN";
   d.autoCommitAfterReview = false;

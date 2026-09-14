@@ -46,6 +46,8 @@ export interface Shipment {
   notes?: string;
   createdAtIso?: string;
   createdBy?: string;
+  shelfLifeDays?: number;
+  downstreamCriticality?: 0 | 1 | 2 | 3;
 }
 
 export interface ShipmentDraft {
@@ -75,6 +77,8 @@ export interface ShipmentDraft {
   owner?: string;
   notes?: string;
   constraints: string[];
+  shelfLifeDays?: number;
+  downstreamCriticality?: 0 | 1 | 2 | 3;
 }
 
 export interface EvidenceSource {
@@ -103,8 +107,32 @@ export interface DisruptionEvent {
   sources: EvidenceSource[];
 }
 
-export type OptionType = "reroute" | "respeed" | "switch_mode";
+export type OptionType =
+  | "reroute"
+  | "respeed"
+  | "switch_mode"
+  | "port_switch"
+  | "split_shipment"
+  | "hold_and_wait"
+  | "accept_loss";
 export type OptionStatus = "viable" | "refused";
+
+export interface RiskCriterion {
+  key: string;
+  label: string;
+  score: number;
+  detail: string;
+  included_in_total: boolean;
+}
+
+export interface RiskAssessment {
+  tier: 1 | 2 | 3 | 4;
+  label: "Negligible" | "Low" | "Elevated" | "Critical";
+  score: number;
+  criteria: RiskCriterion[];
+  hard_overrides: string[];
+  behavior: "AUTO_COMMIT" | "AUTO_COMMIT_NOTIFY" | "PENDING_APPROVAL" | "ESCALATED";
+}
 
 export interface CostBreakdown {
   bunker_fuel_usd_per_tonne: number;
@@ -132,6 +160,8 @@ export interface RecoveryOption {
   refusal_reason?: string;
   constraint?: string;
   cost_breakdown?: CostBreakdown | undefined;
+  feasibility?: "confirmed" | "uncertain" | "unavailable";
+  risk_assessment?: RiskAssessment;
 }
 
 export interface DoNothingBaseline {
@@ -170,6 +200,8 @@ export interface Decision {
   refusals: { optionId: string; reason: string; constraint: string }[];
   review_deadline_iso?: string;
   auto_commit_after_review?: boolean;
+  secondary_approval_required?: boolean;
+  approval_steps_completed?: number;
 }
 
 export type ApprovalActionType = "approve" | "reject" | "override";

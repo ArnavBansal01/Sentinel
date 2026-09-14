@@ -59,14 +59,30 @@ const PORTS = [
 type EntryMode = "guided" | "chat" | "file";
 type FormState = Omit<
   ShipmentDraft,
-  "quantity" | "cargoValueUsd" | "temperatureMinC" | "temperatureMaxC" | "constraints"
+  | "quantity"
+  | "cargoValueUsd"
+  | "temperatureMinC"
+  | "temperatureMaxC"
+  | "constraints"
+  | "shelfLifeDays"
+  | "downstreamCriticality"
+  | "id"
+  | "reference"
+  | "owner"
+  | "notes"
 > & {
+  id: string;
   quantity: string;
   cargoValueUsd: string;
   coldChain: boolean;
   temperatureMinC: string;
   temperatureMaxC: string;
   constraints: string;
+  shelfLifeDays: string;
+  downstreamCriticality: "0" | "1" | "2" | "3";
+  reference: string;
+  owner: string;
+  notes: string;
 };
 
 const initialForm = (): FormState => ({
@@ -89,6 +105,8 @@ const initialForm = (): FormState => ({
   owner: "",
   notes: "",
   constraints: "",
+  shelfLifeDays: "",
+  downstreamCriticality: "0",
 });
 
 const fieldClass =
@@ -136,7 +154,7 @@ function EditorPage() {
     setForm((current) => ({ ...current, [key]: value }));
 
   const formToDraft = (): ShipmentDraft => ({
-    id: form.id || undefined,
+    ...(form.id ? { id: form.id } : {}),
     originCode: form.originCode,
     destinationCode: form.destinationCode,
     cargo: form.cargo,
@@ -157,6 +175,8 @@ function EditorPage() {
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean),
+    ...(form.shelfLifeDays ? { shelfLifeDays: Number(form.shelfLifeDays) } : {}),
+    downstreamCriticality: Number(form.downstreamCriticality) as 0 | 1 | 2 | 3,
   });
 
   const loadDraftIntoForm = (value: ShipmentDraft) => {
@@ -171,6 +191,8 @@ function EditorPage() {
       temperatureMinC: value.temperatureMinC == null ? "2" : String(value.temperatureMinC),
       temperatureMaxC: value.temperatureMaxC == null ? "8" : String(value.temperatureMaxC),
       constraints: value.constraints.join("\n"),
+      shelfLifeDays: value.shelfLifeDays == null ? "" : String(value.shelfLifeDays),
+      downstreamCriticality: String(value.downstreamCriticality ?? 0) as "0" | "1" | "2" | "3",
     });
     setDraft(null);
     setMode("guided");
@@ -518,6 +540,34 @@ function EditorPage() {
                       onChange={(e) => update("reference", e.target.value)}
                     />
                   </Field>
+                  <Field label="Remaining shelf life (days)">
+                    <input
+                      min="0.1"
+                      step="0.1"
+                      type="number"
+                      className={fieldClass}
+                      value={form.shelfLifeDays}
+                      onChange={(e) => update("shelfLifeDays", e.target.value)}
+                      placeholder="Leave blank when not applicable"
+                    />
+                  </Field>
+                  <Field label="Downstream dependency">
+                    <select
+                      className={fieldClass}
+                      value={form.downstreamCriticality}
+                      onChange={(e) =>
+                        update(
+                          "downstreamCriticality",
+                          e.target.value as FormState["downstreamCriticality"],
+                        )
+                      }
+                    >
+                      <option value="0">0 · Standalone</option>
+                      <option value="1">1 · Minor dependency</option>
+                      <option value="2">2 · Important dependency</option>
+                      <option value="3">3 · Critical / no buffer</option>
+                    </select>
+                  </Field>
                   <Field label="Handling constraints" wide>
                     <textarea
                       className="min-h-24 w-full rounded-xl border border-input bg-surface p-3 text-sm outline-none focus:border-primary"
@@ -814,6 +864,8 @@ function DraftSummary({
         : "Ambient",
     ],
     ["Priority", draft.priority],
+    ["Shelf life", draft.shelfLifeDays ? `${draft.shelfLifeDays} days` : "Not supplied"],
+    ["Downstream dependency", `${draft.downstreamCriticality ?? 0} / 3`],
     ["Owner", draft.owner || "Not supplied"],
     ["Reference", draft.reference || "Not supplied"],
   ];
