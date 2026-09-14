@@ -20,15 +20,15 @@ export function ShipmentList({
   onHover?: (id: string | undefined) => void;
 }) {
   return (
-    <ul className="divide-y divide-border overflow-y-auto">
+    <ul className="grid w-full auto-rows-min grid-cols-1 gap-3 overflow-y-auto p-4 md:grid-cols-2 xl:grid-cols-3">
       {shipments.map((s) => (
-        <li key={s.id}>
+        <li key={s.id} className="min-w-0">
           <Link
             to="/shipment/$id"
             params={{ id: s.id }}
             onMouseEnter={() => onHover?.(s.id)}
             onMouseLeave={() => onHover?.(undefined)}
-            className="group grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-4 py-3.5 transition-all duration-200 hover:bg-accent"
+            className="group grid h-full min-h-[112px] grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/45 hover:shadow-md"
           >
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
@@ -52,7 +52,9 @@ export function ShipmentList({
             </div>
             <div className="shrink-0 text-right">
               <p className="num text-xs font-semibold">{usd(s.cargoValueUsd)}</p>
-              <p className={cn("num text-[11px] font-medium", riskTone(s.riskScore))}>risk {s.riskScore}</p>
+              <p className={cn("num text-[11px] font-medium", riskTone(s.riskScore))}>
+                risk {s.riskScore}
+              </p>
             </div>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
           </Link>

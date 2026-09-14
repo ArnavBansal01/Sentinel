@@ -13,7 +13,6 @@ import {
   Radar,
   Radio,
   ScrollText,
-  RotateCcw,
   Snowflake,
   Sparkles,
 } from "lucide-react";
@@ -351,65 +350,33 @@ function SystemStatusBar() {
 }
 
 export function DemoControls({ className }: { className?: string }) {
-  const { triggerScenario, reset, isBusy, state } = useSentinel();
+  const { triggerScenario, isBusy, state } = useSentinel();
   const navigate = useNavigate();
-  const [clearingDemo, setClearingDemo] = useState(false);
-
-  const scenarios = [
-    { id: "SF-1001", label: "Auto decision demo" },
-    { id: "SF-1002", label: "Safety block demo" },
-    { id: "SF-1003", label: "Human review demo" },
-  ];
+  const shipmentId = "SF-1003";
+  const run = state.runs[shipmentId];
 
   return (
     <div className={cn("border-t border-border px-4 py-4", className)}>
       <p className="label-xs pb-3">Presentation demos</p>
-      <div className="space-y-2">
-        {scenarios.map((s) => {
-          const run = state.runs[s.id];
-          return (
-            <Button
-              key={s.id}
-              size="sm"
-              variant="outline"
-              className="w-full justify-between px-3"
-              disabled={isBusy(s.id)}
-              onClick={async () => {
-                await triggerScenario(s.id, true);
-                navigate({ to: "/shipment/$id", params: { id: s.id } });
-              }}
-            >
-              <span className="num">{s.label}</span>
-              {isBusy(s.id) ? (
-                <span className="text-[10px] text-muted-foreground">running</span>
-              ) : run ? (
-                <span className="text-[10px] text-muted-foreground">done</span>
-              ) : null}
-            </Button>
-          );
-        })}
-        <Button
-          size="sm"
-          variant="ghost"
-          className="w-full justify-start"
-          disabled={clearingDemo}
-          onClick={async () => {
-            setClearingDemo(true);
-            try {
-              await reset();
-              navigate({ to: "/planner" });
-            } finally {
-              setClearingDemo(false);
-            }
-          }}
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-          {clearingDemo ? "Clearing demo…" : "Clear demo runs"}
-        </Button>
-      </div>
+      <Button
+        size="sm"
+        variant="outline"
+        className="w-full justify-between px-3"
+        disabled={isBusy(shipmentId)}
+        onClick={async () => {
+          await triggerScenario(shipmentId, true);
+          navigate({ to: "/shipment/$id", params: { id: shipmentId } });
+        }}
+      >
+        <span className="num">Human review demo</span>
+        {isBusy(shipmentId) ? (
+          <span className="text-[10px] text-muted-foreground">running</span>
+        ) : run ? (
+          <span className="text-[10px] text-muted-foreground">done</span>
+        ) : null}
+      </Button>
       <p className="pt-3 text-[10px] leading-relaxed text-muted-foreground">
-        Each demo injects a clearly labeled disruption and runs the full workflow. Clearing removes
-        saved demo runs from the server and screen.
+        Injects a clearly labeled disruption and opens the human approval workflow.
       </p>
     </div>
   );
