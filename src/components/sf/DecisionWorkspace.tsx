@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, CircleDot, Minus } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, CircleDot, ExternalLink, Minus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { days, usdExact } from "@/lib/sf/format";
@@ -37,7 +37,7 @@ function CostDetails({
   return (
     <div className="mt-3 rounded-md border border-border bg-surface-muted px-2.5 py-2">
       <p className="mb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-        Calculated cost breakdown
+        Modelled estimate breakdown
       </p>
       {!baseline && (
         <Row
@@ -69,6 +69,7 @@ export function DoNothingCard({ baseline }: { baseline: DoNothingBaseline }) {
       <p className="num mt-2 text-2xl leading-none font-semibold text-foreground">
         {usdExact(baseline.cost_usd)}
       </p>
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-warning">Planning estimate</p>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{baseline.description}</p>
       <CostDetails breakdown={baseline.cost_breakdown} baseline />
       <div className="mt-3 border-t border-border pt-2">
@@ -144,6 +145,7 @@ export function RecoveryOptionCard({
       >
         {usdExact(option.cost_usd)}
       </p>
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-warning">Planning estimate</p>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{option.description}</p>
 
       <CostDetails breakdown={option.cost_breakdown} />
@@ -152,11 +154,11 @@ export function RecoveryOptionCard({
         <Row label="Extra time" value={days(option.days_added)} />
         <Row
           label="Extra fuel"
-          value={`${option.fuel_pct}% · ${Math.round(option.fuel_tonnes)} t`}
+          value={`${option.fuel_pct.toFixed(1)}% · ${Math.round(option.fuel_tonnes)} t`}
         />
         <Row label="Risk" value={String(option.risk_score)} tone={riskTone(option.risk_score)} />
         <Row
-          label="Saving vs no action"
+          label="Estimated difference vs no action"
           value={usdExact(Math.max(0, decision.do_nothing.cost_usd - option.cost_usd))}
           tone="text-success"
         />
@@ -188,11 +190,33 @@ export function RecoveryOptionCard({
 export function DecisionComparison({ decision }: { decision: Decision }) {
   const ordered = [...decision.options].sort((a, b) => a.cost_usd - b.cost_usd);
   return (
-    <div className="grid gap-3 xl:grid-cols-4 md:grid-cols-2">
-      <DoNothingCard baseline={decision.do_nothing} />
-      {ordered.map((o) => (
-        <RecoveryOptionCard key={o.id} option={o} decision={decision} />
-      ))}
+    <div className="space-y-3">
+      <div className="flex flex-col gap-3 rounded-lg border border-warning/35 bg-warning-surface/55 p-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex gap-2.5">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+          <div>
+            <p className="text-xs font-semibold text-foreground">Scenario estimates—not historical invoices or carrier quotes</p>
+            <p className="mt-1 max-w-4xl text-[11px] leading-4 text-muted-foreground">
+              These values model the fictional shipment shown above using route distance and configured benchmark inputs.
+              Exact real-world costs require the carrier’s fuel purchase, charter, port, cargo, insurance, and contract records.
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-wide">
+          <a href="https://greenvoyage2050.imo.org/pdf/energy-efficiency-technologies-information-portal/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+            Speed/fuel method <ExternalLink className="h-3 w-3" />
+          </a>
+          <a href="https://unctad.org/system/files/official-document/rmt2023_en.pdf" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+            Cost benchmark <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      </div>
+      <div className="grid gap-3 xl:grid-cols-4 md:grid-cols-2">
+        <DoNothingCard baseline={decision.do_nothing} />
+        {ordered.map((o) => (
+          <RecoveryOptionCard key={o.id} option={o} decision={decision} />
+        ))}
+      </div>
     </div>
   );
 }

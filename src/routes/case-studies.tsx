@@ -139,18 +139,18 @@ function CaseStudiesPage() {
             <div className="rounded-xl border border-primary/25 bg-success-surface/60 p-4">
               <div className="flex items-center gap-2 text-primary">
                 <Sparkles className="h-4 w-4" />
-                <span className="text-xs font-semibold uppercase tracking-wide">Interactive demonstration</span>
+                <span className="text-xs font-semibold uppercase tracking-wide">Fictional workflow demonstration</span>
               </div>
               <p className="mt-2 text-sm leading-5">
-                Open a comparable Suez disruption and see the system verify evidence, price alternatives, enforce safety,
-                and prepare a decision.
+                Open a fictional comparable Suez disruption and see the system verify evidence, model alternatives,
+                enforce safety, and prepare a decision. Its planning estimates are not 2021 historical costs.
               </p>
               <Link
                 to="/shipment/$id"
                 params={{ id: "SF-1002" }}
                 className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
               >
-                Run comparable scenario <ArrowRight className="h-4 w-4" />
+                Open fictional scenario <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </div>
