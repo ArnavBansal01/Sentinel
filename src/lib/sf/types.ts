@@ -1,6 +1,6 @@
 /** Sentinel Flash domain model. */
 
-export type Role = "planner" | "approver";
+export type Role = "planner" | "approver" | "editor";
 
 export interface User {
   id: string;
@@ -35,6 +35,46 @@ export interface Shipment {
   coldChain: boolean;
   constraints: string[];
   demoScenario: boolean;
+  cargoCategory?: string;
+  quantity?: number;
+  quantityUnit?: "units" | "kg" | "tonnes" | "pallets" | "containers" | "litres";
+  temperatureMinC?: number;
+  temperatureMaxC?: number;
+  priority?: "standard" | "high" | "critical";
+  reference?: string;
+  owner?: string;
+  notes?: string;
+  createdAtIso?: string;
+  createdBy?: string;
+}
+
+export interface ShipmentDraft {
+  id?: string;
+  originCode: string;
+  destinationCode: string;
+  cargo: string;
+  cargoCategory:
+    | "medicine"
+    | "electronics"
+    | "food"
+    | "chemicals"
+    | "automotive"
+    | "textiles"
+    | "machinery"
+    | "other";
+  quantity: number;
+  quantityUnit: "units" | "kg" | "tonnes" | "pallets" | "containers" | "litres";
+  cargoValueUsd: number;
+  mode: "ocean" | "air" | "rail";
+  vessel: string;
+  etaIso: string;
+  temperatureMinC?: number | null;
+  temperatureMaxC?: number | null;
+  priority: "standard" | "high" | "critical";
+  reference?: string;
+  owner?: string;
+  notes?: string;
+  constraints: string[];
 }
 
 export interface EvidenceSource {

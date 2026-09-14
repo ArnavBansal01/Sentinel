@@ -9,6 +9,7 @@ import {
   Maximize2,
   Minimize2,
   PackageSearch,
+  PackagePlus,
   Radar,
   Radio,
   ScrollText,
@@ -38,6 +39,7 @@ const NAV_GROUPS = [
     items: [
       { to: "/planner", label: "Live overview", icon: Radar },
       { to: "/shipments", label: "Shipments", icon: PackageSearch },
+      { to: "/editor", label: "Shipment editor", icon: PackagePlus },
       { to: "/integrity", label: "Temperature safety", icon: Snowflake },
     ],
   },

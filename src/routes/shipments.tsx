@@ -85,6 +85,7 @@ function ShipmentsPage() {
                     "Shipment",
                     "Lane",
                     "Cargo",
+                    "Quantity / temperature",
                     "Mode / asset",
                     "Value",
                     "ETA",
@@ -109,6 +110,16 @@ function ShipmentsPage() {
                       {s.origin.name} → {s.destination.name}
                     </td>
                     <td className="px-3 py-3 text-muted-foreground">{s.cargo}</td>
+                    <td className="px-3 py-3 text-muted-foreground">
+                      <span className="num block">
+                        {s.quantity ? `${s.quantity.toLocaleString()} ${s.quantityUnit}` : "—"}
+                      </span>
+                      <span className="num block text-[10px]">
+                        {s.coldChain
+                          ? `${s.temperatureMinC ?? "?"}–${s.temperatureMaxC ?? "?"} °C`
+                          : "Ambient"}
+                      </span>
+                    </td>
                     <td className="px-3 py-3 capitalize">
                       {s.mode} · {s.vessel}
                     </td>

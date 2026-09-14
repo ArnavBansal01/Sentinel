@@ -1,10 +1,4 @@
-import type {
-  DisruptionEvent,
-  LedgerEntry,
-  OperationalEvent,
-  Shipment,
-  User,
-} from "./types";
+import type { DisruptionEvent, LedgerEntry, OperationalEvent, Shipment, User } from "./types";
 
 /** Seeded operational data. Demo dataset — not a live external feed. */
 
@@ -22,6 +16,13 @@ export const DEMO_USERS: User[] = [
     email: "approver@sentinelflash.demo",
     role: "approver",
     org: "Network Risk Authority",
+  },
+  {
+    id: "u-editor",
+    name: "A. Rivera",
+    email: "editor@sentinelflash.demo",
+    role: "editor",
+    org: "Shipment Data Operations",
   },
 ];
 
@@ -192,7 +193,8 @@ export const SEED_DISRUPTIONS: Record<string, DisruptionEvent> = {
         label: "Berth queue depth 11 vessels (baseline 4)",
         publisher: "Seeded port status feed (demo)",
         observedAtIso: "2026-09-13T06:02:00.000Z",
-        summary: "Queue depth and average wait time both above the 95th percentile for this terminal.",
+        summary:
+          "Queue depth and average wait time both above the 95th percentile for this terminal.",
         confidence: 0.91,
         simulated: true,
       },
@@ -202,7 +204,8 @@ export const SEED_DISRUPTIONS: Record<string, DisruptionEvent> = {
         label: "AIS confirmation — MV Hanjin Meridian holding pattern",
         publisher: "Seeded AIS snapshot (demo)",
         observedAtIso: "2026-09-13T06:10:00.000Z",
-        summary: "Vessel speed reduced to 9.4 kn on approach leg, consistent with instructed arrival delay.",
+        summary:
+          "Vessel speed reduced to 9.4 kn on approach leg, consistent with instructed arrival delay.",
         confidence: 0.94,
         simulated: true,
       },
@@ -225,7 +228,8 @@ export const SEED_DISRUPTIONS: Record<string, DisruptionEvent> = {
         label: "Southbound convoys suspended pending salvage",
         publisher: "Seeded wire feed (demo)",
         observedAtIso: "2026-09-13T05:20:00.000Z",
-        summary: "Authority halts southbound transits; northbound unaffected. Estimated 72-hour suspension.",
+        summary:
+          "Authority halts southbound transits; northbound unaffected. Estimated 72-hour suspension.",
         confidence: 0.88,
         simulated: true,
       },
@@ -269,7 +273,8 @@ export const SEED_DISRUPTIONS: Record<string, DisruptionEvent> = {
         label: "Gale warning, sustained 45 kn, 6.5 m significant wave height",
         publisher: "Seeded weather feed (demo)",
         observedAtIso: "2026-09-13T04:30:00.000Z",
-        summary: "System tracking east at 18 kn, expected to intersect the planned track within 30 hours.",
+        summary:
+          "System tracking east at 18 kn, expected to intersect the planned track within 30 hours.",
         confidence: 0.9,
         simulated: true,
       },
@@ -279,7 +284,8 @@ export const SEED_DISRUPTIONS: Record<string, DisruptionEvent> = {
         label: "Los Angeles berth window firm — no slack after 26 Sep",
         publisher: "Seeded port status feed (demo)",
         observedAtIso: "2026-09-13T04:48:00.000Z",
-        summary: "Missing the window pushes the call to a 4-day later slot with demurrage exposure.",
+        summary:
+          "Missing the window pushes the call to a 4-day later slot with demurrage exposure.",
         confidence: 0.84,
         simulated: true,
       },
@@ -336,7 +342,8 @@ export const SEED_LEDGER: LedgerEntry[] = [
     actorType: "human",
     actorName: "L. Vandermeer (Approver)",
     reference: "ACT-2B84EE",
-    rationale: "Cold-chain leg present; human approval required and granted with reefer custody confirmed.",
+    rationale:
+      "Cold-chain leg present; human approval required and granted with reefer custody confirmed.",
     decisionSource: "gemini",
     seeded: true,
   },

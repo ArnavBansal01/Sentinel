@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Check, ShieldCheck, ClipboardCheck, Radar } from "lucide-react";
+import { ArrowRight, Check, ShieldCheck, ClipboardCheck, PackagePlus, Radar } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/sf/theme";
@@ -35,7 +35,15 @@ function LoginPage() {
 
   useEffect(() => {
     if (ready && state.user) {
-      navigate({ to: state.user.role === "approver" ? "/approver" : "/planner", replace: true });
+      navigate({
+        to:
+          state.user.role === "approver"
+            ? "/approver"
+            : state.user.role === "editor"
+              ? "/editor"
+              : "/planner",
+        replace: true,
+      });
     }
   }, [ready, state.user, navigate]);
 
@@ -110,7 +118,8 @@ function LoginPage() {
             <legend className="label-xs pb-1">Select role</legend>
             {DEMO_USERS.map((u) => {
               const active = role === u.role;
-              const Icon = u.role === "planner" ? Radar : ClipboardCheck;
+              const Icon =
+                u.role === "planner" ? Radar : u.role === "approver" ? ClipboardCheck : PackagePlus;
               return (
                 <button
                   key={u.id}
@@ -141,7 +150,10 @@ function LoginPage() {
             className="mt-6 h-12 w-full"
             onClick={() => {
               login(role);
-              navigate({ to: role === "approver" ? "/approver" : "/planner", replace: true });
+              navigate({
+                to: role === "approver" ? "/approver" : role === "editor" ? "/editor" : "/planner",
+                replace: true,
+              });
             }}
           >
             Enter control tower <ArrowRight size={16} />
@@ -151,8 +163,8 @@ function LoginPage() {
             <ShieldCheck size={15} /> Role-based access · Auditable decisions
           </div>
           <p className="mt-4 text-[11px] leading-snug text-muted-foreground">
-            Demo accounts. Role permissions are enforced inside the application: a Planner cannot
-            approve, reject or override a pending decision.
+            Demo accounts. Role permissions are enforced inside the application: only Approvers
+            change decisions and only Editors change the shipment register.
           </p>
         </div>
       </section>

@@ -16,6 +16,7 @@ import { eventBus } from "../src/events/eventBus.js";
 import { estimateRecoveryOption } from "../src/economics/costEstimator.js";
 import { routeFor } from "../src/routing/routeEngine.js";
 import type { Decision, Signal } from "../src/types/domain.js";
+import { normalizeShipmentDraft } from "../src/shipments/editor.js";
 const sf = (id: string) => structuredClone(shipments.find((s) => s.id === id)!);
 const raw = {
   options: ["reroute", "respeed", "switch_mode"].map((type) => ({
@@ -157,6 +158,81 @@ describe("route-specific economics", () => {
     expect(longRoute.costUsd).toBe(
       b.fuelUsd + b.vesselTimeUsd + b.handlingUsd + b.cargoProtectionUsd + b.riskReserveUsd,
     );
+  });
+});
+describe("shipment editor", () => {
+  const draft = {
+    id: "SF-EDITOR-TEST",
+    originCode: "BEANR",
+    destinationCode: "KEMBA",
+    cargo: "Insulin pens",
+    cargoCategory: "medicine" as const,
+    quantity: 18,
+    quantityUnit: "pallets" as const,
+    cargoValueUsd: 620000,
+    mode: "ocean" as const,
+    vessel: "MV Horizon",
+    etaIso: "2026-10-24T06:00:00.000Z",
+    temperatureMinC: 2,
+    temperatureMaxC: 8,
+    priority: "critical" as const,
+    reference: "BK-482",
+    owner: "Health Network",
+    notes: "Handle under GDP",
+    constraints: ["GDP-certified handling"],
+  };
+
+  it("normalizes editor details into an operational cold-chain shipment", () => {
+    const shipment = normalizeShipmentDraft(draft, "Test editor");
+    expect(shipment).toMatchObject({
+      id: "SF-EDITOR-TEST",
+      coldChain: true,
+      temperatureMinC: 2,
+      temperatureMaxC: 8,
+      quantity: 18,
+      currentState: "MONITORED",
+      createdBy: "Test editor",
+    });
+    expect(shipment.constraints[0]).toContain("2–8 °C");
+  });
+
+  it("creates and removes shipments only with the editor role", async () => {
+    const server = app.listen(0);
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("Test server did not bind");
+      const base = `http://127.0.0.1:${address.port}`;
+      const denied = await fetch(`${base}/api/shipments`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-user-role": "planner" },
+        body: JSON.stringify(draft),
+      });
+      expect(denied.status).toBe(403);
+
+      const created = await fetch(`${base}/api/shipments`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-role": "editor",
+          "x-user-name": "Test editor",
+        },
+        body: JSON.stringify(draft),
+      });
+      expect(created.status).toBe(201);
+      expect(repository.shipment(draft.id)?.cargo).toBe("Insulin pens");
+
+      const removed = await fetch(`${base}/api/shipments/${draft.id}`, {
+        method: "DELETE",
+        headers: { "x-user-role": "editor", "x-user-name": "Test editor" },
+      });
+      expect(removed.status).toBe(200);
+      expect(repository.shipment(draft.id)).toBeUndefined();
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
   });
 });
 describe("integration", () => {

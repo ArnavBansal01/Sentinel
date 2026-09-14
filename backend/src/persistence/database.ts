@@ -42,6 +42,26 @@ export const repository = {
     db
       .prepare("UPDATE shipments SET json=?,version=version+1 WHERE id=?")
       .run(JSON.stringify(s), s.id),
+  createShipment: (s: Shipment) =>
+    db.prepare("INSERT INTO shipments(id,json,version) VALUES(?,?,0)").run(s.id, JSON.stringify(s)),
+  deleteShipment: (id: string) => {
+    db.exec("BEGIN");
+    try {
+      db.prepare("DELETE FROM actions WHERE shipment_id=?").run(id);
+      db.prepare("DELETE FROM decisions WHERE shipment_id=?").run(id);
+      db.prepare("DELETE FROM disruptions WHERE shipment_id=?").run(id);
+      db.prepare("DELETE FROM activity WHERE shipment_id=?").run(id);
+      db.prepare("DELETE FROM requests WHERE shipment_id=?").run(id);
+      db.prepare("DELETE FROM demo_injections WHERE shipment_id=?").run(id);
+      db.prepare("DELETE FROM demo_runs WHERE shipment_id=?").run(id);
+      const result = db.prepare("DELETE FROM shipments WHERE id=?").run(id);
+      db.exec("COMMIT");
+      return result.changes > 0;
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+  },
   saveDisruption: (d: DisruptionAssessment) =>
     db
       .prepare("INSERT OR REPLACE INTO disruptions(id,shipment_id,json) VALUES(?,?,?)")

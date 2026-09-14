@@ -18,6 +18,7 @@ import type {
   OperationalEvent,
   Role,
   Shipment,
+  ShipmentDraft,
   User,
   WorkflowRun,
 } from "./types";
@@ -50,6 +51,9 @@ interface SFContextValue {
   injectDemoDisruption: (id: string) => Promise<void>;
   triggerScenario: (id: string, showcaseDemo?: boolean) => Promise<void>;
   resolveApproval: (id: string, a: ApprovalActionType, o?: string, n?: string) => Promise<void>;
+  parseShipment: (text: string) => Promise<{ draft: ShipmentDraft; provider: string }>;
+  createShipment: (draft: ShipmentDraft, method: "guided" | "chat" | "file") => Promise<Shipment>;
+  deleteShipment: (id: string) => Promise<void>;
   isBusy: (id: string) => boolean;
 }
 const Context = createContext<SFContextValue | null>(null),
@@ -124,7 +128,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
         ...s,
         activity: [event, ...s.activity.filter((x) => x.id !== event.id)].slice(0, 200),
       }));
-      if (event.type === "ledger.appended") {
+      if (["ledger.appended", "shipment.created", "shipment.deleted"].includes(event.type)) {
         void Promise.all([
           fetch(`${API}/api/shipments`).then((response) => response.json()),
           fetch(`${API}/api/workflows`).then((response) => response.json()),
@@ -341,6 +345,69 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     },
     [state.user],
   );
+  const parseShipment = useCallback(
+    async (text: string) => {
+      if (state.user?.role !== "editor") throw new Error("Editor role is required.");
+      const response = await fetch(`${API}/api/editor/parse-shipment`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-user-role": state.user.role },
+        body: JSON.stringify({ text }),
+      });
+      const payload = await response.json();
+      if (!response.ok)
+        throw new Error(payload.message ?? payload.error ?? "Shipment extraction failed");
+      return payload as { draft: ShipmentDraft; provider: string };
+    },
+    [state.user],
+  );
+  const createShipment = useCallback(
+    async (draft: ShipmentDraft, method: "guided" | "chat" | "file") => {
+      if (state.user?.role !== "editor") throw new Error("Editor role is required.");
+      const response = await fetch(`${API}/api/shipments`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-role": state.user.role,
+          "x-user-name": state.user.name,
+          "x-import-method": method,
+        },
+        body: JSON.stringify(draft),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "Shipment save failed");
+      const shipment = payload as Shipment;
+      setState((current) => ({
+        ...current,
+        shipments: [...current.shipments.filter((item) => item.id !== shipment.id), shipment].sort(
+          (a, b) => a.id.localeCompare(b.id),
+        ),
+      }));
+      return shipment;
+    },
+    [state.user],
+  );
+  const deleteShipment = useCallback(
+    async (id: string) => {
+      if (state.user?.role !== "editor") throw new Error("Editor role is required.");
+      const response = await fetch(`${API}/api/shipments/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { "x-user-role": state.user.role, "x-user-name": state.user.name },
+      });
+      const payload = await response.json();
+      if (!response.ok)
+        throw new Error(payload.message ?? payload.error ?? "Shipment removal failed");
+      setState((current) => {
+        const runs = { ...current.runs };
+        delete runs[id];
+        return {
+          ...current,
+          shipments: current.shipments.filter((shipment) => shipment.id !== id),
+          runs,
+        };
+      });
+    },
+    [state.user],
+  );
   const value = useMemo(
     () => ({
       state,
@@ -351,6 +418,9 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       injectDemoDisruption,
       triggerScenario,
       resolveApproval,
+      parseShipment,
+      createShipment,
+      deleteShipment,
       isBusy: (id: string) => !!busy[id],
     }),
     [
@@ -362,16 +432,16 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       injectDemoDisruption,
       triggerScenario,
       resolveApproval,
+      parseShipment,
+      createShipment,
+      deleteShipment,
       busy,
     ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 function mergeShipments(backend: Shipment[]): Shipment[] {
-  const byId = new Map(backend.map((shipment) => [shipment.id, shipment]));
-  const network = SEED_SHIPMENTS.map((seeded) => byId.get(seeded.id) ?? seeded);
-  const known = new Set(network.map((shipment) => shipment.id));
-  return [...network, ...backend.filter((shipment) => !known.has(shipment.id))];
+  return backend;
 }
 export function useSentinel() {
   const c = useContext(Context);
@@ -390,7 +460,12 @@ function mapEvent(e: BackendEvent): OperationalEvent {
   return {
     id: e.id,
     atIso: e.timestamp,
-    stage: e.agent === "policy" ? "validate" : (e.agent as OperationalEvent["stage"]),
+    stage:
+      e.agent === "policy"
+        ? "validate"
+        : e.agent === "system"
+          ? "ledger"
+          : (e.agent as OperationalEvent["stage"]),
     type: e.eventType,
     shipmentId: e.shipmentId,
     message: e.message,

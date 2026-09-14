@@ -99,11 +99,31 @@ function ShipmentDetail() {
     >
       <div className="space-y-5 p-4 sm:p-5 lg:p-6">
         {/* Header facts */}
-        <div className="panel grid grid-cols-2 gap-y-3 px-4 py-3 md:grid-cols-4 xl:grid-cols-7">
+        <div className="panel grid grid-cols-2 gap-y-3 px-4 py-3 md:grid-cols-4 xl:grid-cols-9">
           <Fact label="Status" value={<ShipmentStatusBadge status={shipment.status} />} />
           <Fact
             label="Cargo value"
             value={<span className="num font-semibold">{usdExact(shipment.cargoValueUsd)}</span>}
+          />
+          <Fact
+            label="Quantity"
+            value={
+              <span className="num text-sm">
+                {shipment.quantity
+                  ? `${shipment.quantity.toLocaleString()} ${shipment.quantityUnit}`
+                  : "—"}
+              </span>
+            }
+          />
+          <Fact
+            label="Temperature"
+            value={
+              <span className="num text-sm">
+                {shipment.coldChain
+                  ? `${shipment.temperatureMinC ?? "?"}–${shipment.temperatureMaxC ?? "?"} °C`
+                  : "Ambient"}
+              </span>
+            }
           />
           <Fact
             label="ETA"

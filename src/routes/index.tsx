@@ -15,7 +15,8 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Sentinel Flash — Disruption Control Tower" },
       {
         property: "og:description",
-        content: "Sense, decide and act on supply-chain disruption with auditable, constraint-safe automation.",
+        content:
+          "Sense, decide and act on supply-chain disruption with auditable, constraint-safe automation.",
       },
     ],
   }),
@@ -30,7 +31,15 @@ function Index() {
     if (!ready) return;
     try {
       if (state.user) {
-        navigate({ to: state.user.role === "approver" ? "/approver" : "/planner", replace: true });
+        navigate({
+          to:
+            state.user.role === "approver"
+              ? "/approver"
+              : state.user.role === "editor"
+                ? "/editor"
+                : "/planner",
+          replace: true,
+        });
       } else {
         navigate({ to: "/login", replace: true });
       }
@@ -42,7 +51,9 @@ function Index() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <p className="text-xs tracking-wide text-muted-foreground uppercase">Sentinel Flash — loading…</p>
+      <p className="text-xs tracking-wide text-muted-foreground uppercase">
+        Sentinel Flash — loading…
+      </p>
     </div>
   );
 }

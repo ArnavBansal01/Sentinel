@@ -37,6 +37,17 @@ export interface Shipment {
   coldChain: boolean;
   constraints: string[];
   demoScenario: boolean;
+  cargoCategory?: string;
+  quantity?: number;
+  quantityUnit?: "units" | "kg" | "tonnes" | "pallets" | "containers" | "litres";
+  temperatureMinC?: number;
+  temperatureMaxC?: number;
+  priority?: "standard" | "high" | "critical";
+  reference?: string;
+  owner?: string;
+  notes?: string;
+  createdAtIso?: string;
+  createdBy?: string;
   selectedRoute?: RoutePlan | undefined;
   currentState?: WorkflowState;
 }

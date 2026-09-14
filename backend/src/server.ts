@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import { ZodError } from "zod";
 import { randomUUID } from "node:crypto";
 import { config } from "./config.js";
 import { repository } from "./persistence/database.js";
@@ -10,6 +11,8 @@ import { ActAgent } from "./agents/act/actAgent.js";
 import { orchestrate, approve, commitExpiredReviews } from "./orchestrator.js";
 import { aisRuntimeStatus } from "./connectors/ais/aisStreamConnector.js";
 import type { ActivityEvent, Decision, DecisionOption } from "./types/domain.js";
+import { EDITOR_PORTS, normalizeShipmentDraft, parseShipmentText } from "./shipments/editor.js";
+import { publish } from "./events/eventBus.js";
 export const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "1mb" }));
@@ -47,6 +50,68 @@ app.get("/api/shipments/:id", (q, r) => {
   const x = repository.shipment(q.params.id);
   if (x) r.json(x);
   else r.status(404).json({ error: "shipment_not_found" });
+});
+app.get("/api/editor/ports", (_q, r) => r.json(EDITOR_PORTS));
+app.post("/api/editor/parse-shipment", async (q, r, n) => {
+  try {
+    if (q.header("x-user-role") !== "editor")
+      return r.status(403).json({ error: "editor_role_required" });
+    const draft = await parseShipmentText(String(q.body?.text ?? ""));
+    r.json({ draft, provider: "gemini", status: "review_required" });
+  } catch (error) {
+    n(error);
+  }
+});
+app.post("/api/shipments", (q, r, n) => {
+  try {
+    if (q.header("x-user-role") !== "editor")
+      return r.status(403).json({ error: "editor_role_required" });
+    const actor = String(q.header("x-user-name") ?? "Shipment editor");
+    const shipment = normalizeShipmentDraft(q.body, actor);
+    if (repository.shipment(shipment.id))
+      return r
+        .status(409)
+        .json({ error: "shipment_id_exists", message: `${shipment.id} already exists` });
+    repository.createShipment(shipment);
+    publish(
+      randomUUID(),
+      "system",
+      "shipment.created",
+      shipment.id,
+      `${actor} added ${shipment.id}`,
+      {
+        actor,
+        source: String(q.header("x-import-method") ?? "guided"),
+      },
+    );
+    r.status(201).json(shipment);
+  } catch (error) {
+    n(error);
+  }
+});
+app.delete("/api/shipments/:id", (q, r, n) => {
+  try {
+    if (q.header("x-user-role") !== "editor")
+      return r.status(403).json({ error: "editor_role_required" });
+    const shipment = repository.shipment(q.params.id);
+    if (!shipment) return r.status(404).json({ error: "shipment_not_found" });
+    const actor = String(q.header("x-user-name") ?? "Shipment editor");
+    if (!repository.deleteShipment(shipment.id))
+      return r.status(404).json({ error: "shipment_not_found" });
+    publish(
+      randomUUID(),
+      "system",
+      "shipment.deleted",
+      shipment.id,
+      `${actor} removed ${shipment.id}`,
+      {
+        actor,
+      },
+    );
+    r.json({ removed: true, shipmentId: shipment.id, actor });
+  } catch (error) {
+    n(error);
+  }
 });
 app.get("/api/workflows", (_q, r) => {
   const seen = new Set<string>();
@@ -319,9 +384,12 @@ app.use(
     _n: express.NextFunction,
   ) => {
     console.error(e);
-    r.status(e.status ?? (e.code === "GEMINI_PROVIDER_FAILED" ? 503 : 500)).json({
+    const validation = e instanceof ZodError;
+    r.status(
+      validation ? 400 : (e.status ?? (e.code === "GEMINI_PROVIDER_FAILED" ? 503 : 500)),
+    ).json({
       error: e.code ?? "backend_error",
-      message: e.message,
+      message: validation ? (e.issues[0]?.message ?? "Invalid shipment details") : e.message,
       decisionProvider: e.code === "GEMINI_PROVIDER_FAILED" ? "gemini" : undefined,
       status: e.code === "GEMINI_PROVIDER_FAILED" ? "provider_failed" : undefined,
     });

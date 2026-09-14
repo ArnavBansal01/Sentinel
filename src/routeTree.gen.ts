@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApproverRouteImport } from './routes/approver'
 import { Route as CaseStudiesRouteImport } from './routes/case-studies'
+import { Route as EditorRouteImport } from './routes/editor'
 import { Route as IntegrityRouteImport } from './routes/integrity'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PlannerRouteImport } from './routes/planner'
@@ -34,6 +35,11 @@ const ApproverRoute = ApproverRouteImport.update({
 const CaseStudiesRoute = CaseStudiesRouteImport.update({
   id: '/case-studies',
   path: '/case-studies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EditorRoute = EditorRouteImport.update({
+  id: '/editor',
+  path: '/editor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IntegrityRoute = IntegrityRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/approver': typeof ApproverRoute
   '/case-studies': typeof CaseStudiesRoute
+  '/editor': typeof EditorRoute
   '/integrity': typeof IntegrityRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/approver': typeof ApproverRoute
   '/case-studies': typeof CaseStudiesRoute
+  '/editor': typeof EditorRoute
   '/integrity': typeof IntegrityRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/approver': typeof ApproverRoute
   '/case-studies': typeof CaseStudiesRoute
+  '/editor': typeof EditorRoute
   '/integrity': typeof IntegrityRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/approver'
     | '/case-studies'
+    | '/editor'
     | '/integrity'
     | '/login'
     | '/planner'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/'
     | '/approver'
     | '/case-studies'
+    | '/editor'
     | '/integrity'
     | '/login'
     | '/planner'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/approver'
     | '/case-studies'
+    | '/editor'
     | '/integrity'
     | '/login'
     | '/planner'
@@ -163,6 +175,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApproverRoute: typeof ApproverRoute
   CaseStudiesRoute: typeof CaseStudiesRoute
+  EditorRoute: typeof EditorRoute
   IntegrityRoute: typeof IntegrityRoute
   LoginRoute: typeof LoginRoute
   PlannerRoute: typeof PlannerRoute
@@ -194,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/case-studies'
       fullPath: '/case-studies'
       preLoaderRoute: typeof CaseStudiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/editor': {
+      id: '/editor'
+      path: '/editor'
+      fullPath: '/editor'
+      preLoaderRoute: typeof EditorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/integrity': {
@@ -259,6 +279,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApproverRoute: ApproverRoute,
   CaseStudiesRoute: CaseStudiesRoute,
+  EditorRoute: EditorRoute,
   IntegrityRoute: IntegrityRoute,
   LoginRoute: LoginRoute,
   PlannerRoute: PlannerRoute,
