@@ -1,4 +1,5 @@
 import type { Decision, Shipment } from "../types/domain.js";
+import { optionValueScore } from "../economics/costEstimator.js";
 export const thresholds = { cargoValueUsd: 1_000_000, delayDays: 7, fuelTonnes: 1_000 };
 export function applyPolicy(s: Shipment, d: Decision) {
   const triggered: string[] = [];
@@ -14,7 +15,9 @@ export function applyPolicy(s: Shipment, d: Decision) {
   }
   let recommended = d.options.find((o) => o.id === d.recommendedOption);
   if (!recommended || recommended.status === "refused") {
-    recommended = d.options.find((o) => o.status === "viable");
+    recommended = d.options
+      .filter((o) => o.status === "viable")
+      .sort((a, b) => optionValueScore(a) - optionValueScore(b))[0];
     d.recommendedOption = recommended?.id ?? null;
   }
   if (recommended && recommended.delayDays > thresholds.delayDays)

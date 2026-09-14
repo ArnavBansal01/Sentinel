@@ -37,6 +37,7 @@
   - **Re-speed**: Adjust voyage speed knots to meet critical berth windows.
   - **Switch Mode**: Modal shifts (e.g., barge, rail, road feeder) to avoid chokepoints.
 - **Cost of Inaction**: Directly benchmarks option economics against the true cost of doing nothing (demurrage, detention, downstream plant stoppage).
+- **Route-specific economics**: Calculates each option from voyage distance, speed-related fuel burn, bunker price, vessel time, handling, cargo protection, and risk reserve instead of using fixed prices.
 - **Constraint Enforcement**: Enforces hard operational guardrails (e.g., strict cold-chain integrity, hazardous material handling, maximum transit delay). Unsafe proposals are automatically refused.
 
 ### 3. Act & Govern
@@ -104,6 +105,10 @@
 
    # Use `live` for external providers, or `demo` for clearly labelled seeded signals
    SENTINEL_MODE=demo
+
+   # Optional cost-model assumptions; defaults are documented in .env.example
+   BUNKER_FUEL_USD_PER_TONNE=635
+   VESSEL_OPERATING_USD_PER_DAY=25000
    ```
 
    In live mode, unavailable providers return `UNAVAILABLE`; the server never fabricates live-looking data.

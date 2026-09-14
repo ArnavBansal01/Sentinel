@@ -12,6 +12,8 @@ import { orchestrate, approve } from "../src/orchestrator.js";
 import { app } from "../src/server.js";
 import { repository } from "../src/persistence/database.js";
 import { eventBus } from "../src/events/eventBus.js";
+import { estimateRecoveryOption } from "../src/economics/costEstimator.js";
+import { routeFor } from "../src/routing/routeEngine.js";
 import type { Decision, Signal } from "../src/types/domain.js";
 const sf = (id: string) => structuredClone(shipments.find((s) => s.id === id)!);
 const raw = {
@@ -142,6 +144,20 @@ describe("policy", () => {
     expect(applyPolicy(sf("SF-1001"), d).overallStatus).toBe("PENDING_APPROVAL");
   });
 });
+describe("route-specific economics", () => {
+  it("produces different costs for different routes and reconciles the breakdown", () => {
+    const ningbo = sf("SF-1001");
+    const jebelAli = sf("SF-2043");
+    const longRoute = estimateRecoveryOption(ningbo, "reroute", routeFor(ningbo, "reroute"));
+    const shortRoute = estimateRecoveryOption(jebelAli, "reroute", routeFor(jebelAli, "reroute"));
+    expect(longRoute.costUsd).not.toBe(shortRoute.costUsd);
+    expect(longRoute.fuelTonnes).toBeGreaterThan(shortRoute.fuelTonnes);
+    const b = longRoute.costBreakdown!;
+    expect(longRoute.costUsd).toBe(
+      b.fuelUsd + b.vesselTimeUsd + b.handlingUsd + b.cargoProtectionUsd + b.riskReserveUsd,
+    );
+  });
+});
 describe("integration", () => {
   beforeAll(() => {
     process.env["SENTINEL_MODE"] = "demo";
@@ -200,7 +216,8 @@ describe("integration", () => {
 
     const overrideRun: any = await orchestrate("SF-1003", randomUUID(), true);
     const alternative = overrideRun.decision.options.find(
-      (option: any) => option.status === "viable" && option.id !== overrideRun.decision.recommendedOption,
+      (option: any) =>
+        option.status === "viable" && option.id !== overrideRun.decision.recommendedOption,
     );
     expect(alternative).toBeTruthy();
     const overridden: any = await approve("SF-1003", "override", "approver", alternative.id);
@@ -220,7 +237,7 @@ describe("integration", () => {
       for (const shipment of shipments) {
         const response = await fetch(`${base}/api/shipments/${shipment.id}`);
         expect(response.status).toBe(200);
-        expect((await response.json() as any).id).toBe(shipment.id);
+        expect(((await response.json()) as any).id).toBe(shipment.id);
       }
       expect((await fetch(`${base}/api/shipments/NOT-A-SHIPMENT`)).status).toBe(404);
 
@@ -232,7 +249,7 @@ describe("integration", () => {
       const json = await fetch(`${base}/api/ledger/export?format=json`);
       expect(json.status).toBe(200);
       expect(json.headers.get("content-disposition")).toContain("sentinel-ledger");
-      expect((await json.json() as any).appendOnly).toBe(true);
+      expect(((await json.json()) as any).appendOnly).toBe(true);
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),

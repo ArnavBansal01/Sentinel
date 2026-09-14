@@ -81,6 +81,17 @@ export interface DisruptionAssessment {
   providers: ProviderStatus[];
 }
 export type OptionType = "reroute" | "respeed" | "switch_mode";
+export interface CostBreakdown {
+  bunkerFuelUsdPerTonne: number;
+  baselineFuelTonnes: number;
+  optionFuelTonnes: number;
+  fuelUsd: number;
+  vesselTimeUsd: number;
+  handlingUsd: number;
+  cargoProtectionUsd: number;
+  riskReserveUsd: number;
+  method: "route_cost_v1";
+}
 export interface DecisionOption {
   id: string;
   type: OptionType;
@@ -92,6 +103,7 @@ export interface DecisionOption {
   reason: string;
   policyReasons: string[];
   route?: RoutePlan;
+  costBreakdown?: CostBreakdown;
 }
 export interface Decision {
   id: string;
@@ -106,6 +118,7 @@ export interface Decision {
     fuelTonnes: number;
     riskScore: number;
     reason: string;
+    costBreakdown?: CostBreakdown;
   };
   recommendedOption: string | null;
   reasoning: string;

@@ -5,7 +5,7 @@ const alt: Record<string, GeoPoint> = {
   KEMBA: { name: "Dar es Salaam", code: "TZDAR", lat: -6.82, lon: 39.29 },
   USLAX: { name: "Long Beach", code: "USLGB", lat: 33.75, lon: -118.22 },
 };
-function distance(a: GeoPoint, b: GeoPoint) {
+export function greatCircleDistanceNm(a: GeoPoint, b: GeoPoint) {
   const R = 3440.065,
     p1 = (a.lat * Math.PI) / 180,
     p2 = (b.lat * Math.PI) / 180,
@@ -31,7 +31,7 @@ export function routeFor(s: Shipment, type: OptionType): RoutePlan {
             lat: (s.origin.lat + s.destination.lat) / 2,
             lon: (s.origin.lon + s.destination.lon) / 2,
           };
-  const base = distance(s.origin, s.destination);
+  const base = greatCircleDistanceNm(s.origin, s.destination);
   const factor = type === "reroute" ? 1.18 : type === "switch_mode" ? 1.08 : 0.98;
   const d = Math.round(base * factor);
   const delta = Math.max(

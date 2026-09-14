@@ -66,6 +66,18 @@ export interface DisruptionEvent {
 export type OptionType = "reroute" | "respeed" | "switch_mode";
 export type OptionStatus = "viable" | "refused";
 
+export interface CostBreakdown {
+  bunker_fuel_usd_per_tonne: number;
+  baseline_fuel_tonnes: number;
+  option_fuel_tonnes: number;
+  fuel_usd: number;
+  vessel_time_usd: number;
+  handling_usd: number;
+  cargo_protection_usd: number;
+  risk_reserve_usd: number;
+  method: string;
+}
+
 export interface RecoveryOption {
   id: string;
   type: OptionType;
@@ -79,6 +91,7 @@ export interface RecoveryOption {
   status: OptionStatus;
   refusal_reason?: string;
   constraint?: string;
+  cost_breakdown?: CostBreakdown | undefined;
 }
 
 export interface DoNothingBaseline {
@@ -86,6 +99,7 @@ export interface DoNothingBaseline {
   days_added: number;
   risk_score: number;
   description: string;
+  cost_breakdown?: CostBreakdown | undefined;
 }
 
 export type DecisionState =

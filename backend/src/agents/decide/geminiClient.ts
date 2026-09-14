@@ -13,6 +13,7 @@ export async function askGemini(
       contents: `Generate exactly one reroute, one respeed, and one switch_mode option, plus doNothing, for this shipment.
 
 Return JSON only and follow these numeric rules exactly:
+- Numeric cost, delay, fuel, and risk fields are provisional. Sentinel recalculates them with its route-specific voyage estimator before policy evaluation.
 - costUsd must be a finite number greater than or equal to 0.
 - delayDays means additional delay versus the current plan. It must be greater than or equal to 0. If an option saves time, return 0; never return a negative number.
 - fuelTonnes means the magnitude of additional bunker fuel versus the current plan. It must be greater than or equal to 0. Never express a reduction as a negative number.

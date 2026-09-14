@@ -4,6 +4,11 @@ import { askGemini } from "./geminiClient.js";
 import { routeFor } from "../../routing/routeEngine.js";
 import { applyPolicy } from "../../policy/policyEngine.js";
 import { publish } from "../../events/eventBus.js";
+import {
+  estimateDoNothing,
+  estimateRecoveryOption,
+  optionValueScore,
+} from "../../economics/costEstimator.js";
 import type {
   Decision,
   DecisionOption,
@@ -11,41 +16,34 @@ import type {
   OptionType,
   Shipment,
 } from "../../types/domain.js";
-function demo(s: Shipment) {
-  const specs: Record<OptionType, [number, number, number, number, string]> = {
-    reroute: [
-      82000,
-      s.id === "SF-1002" ? 8 : 3,
-      420,
-      24,
-      "Avoid the disrupted corridor using validated waypoints.",
-    ],
-    respeed: [58000, 1, 1100, 43, "Increase speed on safe legs to recover schedule."],
-    switch_mode: [126000, 2, 120, 29, "Use an alternative port and protected onward transport."],
+function demo() {
+  const specs: Record<OptionType, string> = {
+    reroute: "Avoid the disrupted corridor using validated waypoints.",
+    respeed: "Increase speed on safe legs to recover schedule.",
+    switch_mode: "Use an alternative port and protected onward transport.",
   };
   return {
     options: (Object.keys(specs) as OptionType[]).map((type) => {
-      const [cost, delay, fuel, risk, reason] = specs[type];
       return {
         type,
         status: "viable" as const,
-        costUsd: cost,
-        delayDays: delay,
-        fuelTonnes: fuel,
-        riskScore: risk,
-        reason,
+        costUsd: 0,
+        delayDays: 0,
+        fuelTonnes: 0,
+        riskScore: 0,
+        reason: specs[type],
       };
     }),
     doNothing: {
-      costUsd: 210000,
-      delayDays: 9,
+      costUsd: 0,
+      delayDays: 0,
       fuelTonnes: 0,
-      riskScore: 86,
-      reason: "Absorb congestion, detention, and service failure exposure.",
+      riskScore: 0,
+      reason: "No recovery action is taken.",
     },
-    recommendedOption: s.id === "SF-1002" ? ("respeed" as const) : ("reroute" as const),
+    recommendedOption: "reroute" as const,
     reasoning:
-      "Compared route feasibility, delay, fuel, risk, evidence confidence, cargo constraints, and the economic baseline.",
+      "Compared route feasibility, voyage time, fuel, cargo exposure, handling cost, risk, and the cost of taking no action.",
   };
 }
 export class DecideAgent {
@@ -57,17 +55,36 @@ export class DecideAgent {
     forceDemo = false,
   ): Promise<Decision> {
     const useDemo = forceDemo || config.mode === "DEMO";
-    publish(traceId, "decide", "decide.started", s.id, useDemo ? "Demo decision started" : "AI decision started");
-    const result = useDemo ? ({ ok: false, reason: "showcase_demo" } as const) : await askGemini(s, d);
+    publish(
+      traceId,
+      "decide",
+      "decide.started",
+      s.id,
+      useDemo ? "Demo decision started" : "AI decision started",
+    );
+    const result = useDemo
+      ? ({ ok: false, reason: "showcase_demo" } as const)
+      : await askGemini(s, d);
     if (!result.ok && !useDemo)
       throw Object.assign(new Error(result.reason), { code: "GEMINI_PROVIDER_FAILED" });
-    const raw = result.ok ? result.value : demo(s);
-    const options: DecisionOption[] = raw.options.map((o) => ({
-      ...o,
-      id: `${requestId}-${o.type}`,
-      policyReasons: [],
-      route: routeFor(s, o.type),
-    }));
+    const raw = result.ok ? result.value : demo();
+    const options: DecisionOption[] = raw.options.map((o) => {
+      const route = routeFor(s, o.type);
+      return {
+        ...o,
+        ...estimateRecoveryOption(s, o.type, route),
+        id: `${requestId}-${o.type}`,
+        policyReasons: [],
+        route,
+      };
+    });
+    const eligibleForRecommendation = options.filter(
+      (option) => !(s.coldChain && option.type === "respeed"),
+    );
+    const recommended = [...eligibleForRecommendation].sort(
+      (a, b) => optionValueScore(a) - optionValueScore(b),
+    )[0];
+    const doNothing = estimateDoNothing(s, d);
     const decision: Decision = {
       id: randomUUID(),
       requestId,
@@ -75,9 +92,9 @@ export class DecideAgent {
       disruptionId: d.eventId,
       overallStatus: "DECISION_READY",
       options,
-      doNothing: raw.doNothing,
-      recommendedOption: `${requestId}-${raw.recommendedOption}`,
-      reasoning: raw.reasoning,
+      doNothing,
+      recommendedOption: recommended?.id ?? `${requestId}-${raw.recommendedOption}`,
+      reasoning: `${raw.reasoning} Route-specific costs were calculated by Sentinel's voyage estimator using distance, speed-related fuel burn, bunker price, vessel time, handling, cargo protection, and risk reserve.`,
       provider: result.ok ? "gemini" : "deterministic_demo",
       providerStatus: result.ok ? "completed" : "demo",
       policyRulesTriggered: [],

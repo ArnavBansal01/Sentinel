@@ -32,6 +32,14 @@ app.get("/api/health", (_q, r) => {
         ? "configured"
         : "unavailable",
     database,
+    costModel: {
+      method: "route_cost_v1",
+      bunkerFuelUsdPerTonne: config.economics.bunkerFuelUsdPerTonne,
+      vesselOperatingUsdPerDay: config.economics.vesselOperatingUsdPerDay,
+      baseFuelTonnesPerDay: config.economics.baseFuelTonnesPerDay,
+      baseSpeedKnots: config.routing.vesselSpeedKnots,
+      respeedKnots: config.economics.respeedKnots,
+    },
   });
 });
 app.get("/api/shipments", (_q, r) => r.json(repository.shipments()));
@@ -51,7 +59,15 @@ app.get("/api/workflows", (_q, r) => {
     const decision = stored["decision"] as Decision | null;
     const storedAction = decision ? repository.actionByDecision(decision.id) : undefined;
     const action = storedAction ? JSON.parse(storedAction.json) : stored["action"];
-    return [{ ...stored, shipment, decision: action?.decision ?? decision, action, persistedState: shipment.currentState }];
+    return [
+      {
+        ...stored,
+        shipment,
+        decision: action?.decision ?? decision,
+        action,
+        persistedState: shipment.currentState,
+      },
+    ];
   });
   r.json(workflows);
 });
@@ -109,11 +125,15 @@ app.post("/api/orchestrate/:shipmentId", async (q, r, n) => {
 });
 app.post("/api/demo/orchestrate/:shipmentId", async (q, r, n) => {
   try {
-    r.json(await orchestrate(
-      q.params.shipmentId,
-      String(q.body?.requestId ?? q.header("idempotency-key") ?? randomUUID()) as ReturnType<typeof randomUUID>,
-      true,
-    ));
+    r.json(
+      await orchestrate(
+        q.params.shipmentId,
+        String(q.body?.requestId ?? q.header("idempotency-key") ?? randomUUID()) as ReturnType<
+          typeof randomUUID
+        >,
+        true,
+      ),
+    );
   } catch (e) {
     n(e);
   }
@@ -172,6 +192,12 @@ app.get("/api/ledger/export", (q, r) => {
         selected?.delayDays,
         selected?.fuelTonnes,
         selected?.riskScore,
+        selected?.costBreakdown?.bunkerFuelUsdPerTonne,
+        selected?.costBreakdown?.fuelUsd,
+        selected?.costBreakdown?.vesselTimeUsd,
+        selected?.costBreakdown?.handlingUsd,
+        selected?.costBreakdown?.cargoProtectionUsd,
+        selected?.costBreakdown?.riskReserveUsd,
         decision?.provider,
         decision?.reasoning,
         decision?.policyRulesTriggered,
@@ -196,6 +222,12 @@ app.get("/api/ledger/export", (q, r) => {
         "delay_days",
         "fuel_tonnes",
         "risk_score",
+        "bunker_fuel_usd_per_tonne",
+        "fuel_cost_usd",
+        "vessel_time_cost_usd",
+        "handling_cost_usd",
+        "cargo_protection_cost_usd",
+        "risk_reserve_usd",
         "decision_provider",
         "ai_reasoning",
         "policy_rules",

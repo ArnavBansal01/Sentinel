@@ -2,7 +2,7 @@ import { Ban, CheckCircle2, CircleDot, Minus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { days, usdExact } from "@/lib/sf/format";
-import type { Decision, DoNothingBaseline, RecoveryOption } from "@/lib/sf/types";
+import type { CostBreakdown, Decision, DoNothingBaseline, RecoveryOption } from "@/lib/sf/types";
 import { Badge } from "./ui";
 
 const TYPE_LABEL: Record<RecoveryOption["type"], string> = {
@@ -26,6 +26,36 @@ function riskTone(risk: number): string {
   return "text-success";
 }
 
+function CostDetails({
+  breakdown,
+  baseline = false,
+}: {
+  breakdown?: CostBreakdown | undefined;
+  baseline?: boolean;
+}) {
+  if (!breakdown) return null;
+  return (
+    <div className="mt-3 rounded-md border border-border bg-surface-muted px-2.5 py-2">
+      <p className="mb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+        Calculated cost breakdown
+      </p>
+      {!baseline && (
+        <Row
+          label={`Fuel @ ${usdExact(breakdown.bunker_fuel_usd_per_tonne)}/t`}
+          value={usdExact(breakdown.fuel_usd)}
+        />
+      )}
+      <Row label="Vessel time" value={usdExact(breakdown.vessel_time_usd)} />
+      {!baseline && <Row label="Port / handling" value={usdExact(breakdown.handling_usd)} />}
+      <Row
+        label={baseline ? "Cargo exposure" : "Cargo protection"}
+        value={usdExact(breakdown.cargo_protection_usd)}
+      />
+      <Row label="Risk reserve" value={usdExact(breakdown.risk_reserve_usd)} />
+    </div>
+  );
+}
+
 export function DoNothingCard({ baseline }: { baseline: DoNothingBaseline }) {
   return (
     <article className="flex flex-col rounded-lg border border-dashed border-border-strong bg-surface-muted p-3">
@@ -40,10 +70,15 @@ export function DoNothingCard({ baseline }: { baseline: DoNothingBaseline }) {
         {usdExact(baseline.cost_usd)}
       </p>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{baseline.description}</p>
+      <CostDetails breakdown={baseline.cost_breakdown} baseline />
       <div className="mt-3 border-t border-border pt-2">
         <Row label="Extra time" value={days(baseline.days_added)} />
         <Row label="Extra fuel" value="—" />
-        <Row label="Risk" value={String(baseline.risk_score)} tone={riskTone(baseline.risk_score)} />
+        <Row
+          label="Risk"
+          value={String(baseline.risk_score)}
+          tone={riskTone(baseline.risk_score)}
+        />
         <Row label="Status" value="Used for comparison" />
       </div>
     </article>
@@ -102,12 +137,16 @@ export function RecoveryOptionCard({
       <p
         className={cn(
           "num mt-2 text-2xl leading-none font-semibold",
-          refused ? "text-danger line-through decoration-danger/70 decoration-2" : "text-foreground",
+          refused
+            ? "text-danger line-through decoration-danger/70 decoration-2"
+            : "text-foreground",
         )}
       >
         {usdExact(option.cost_usd)}
       </p>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{option.description}</p>
+
+      <CostDetails breakdown={option.cost_breakdown} />
 
       <div className="mt-3 border-t border-border pt-2">
         <Row label="Extra time" value={days(option.days_added)} />
@@ -116,6 +155,11 @@ export function RecoveryOptionCard({
           value={`${option.fuel_pct}% · ${Math.round(option.fuel_tonnes)} t`}
         />
         <Row label="Risk" value={String(option.risk_score)} tone={riskTone(option.risk_score)} />
+        <Row
+          label="Saving vs no action"
+          value={usdExact(Math.max(0, decision.do_nothing.cost_usd - option.cost_usd))}
+          tone="text-success"
+        />
         <Row
           label="Status"
           value={refused ? "Blocked by safety rule" : committed ? "Applied" : "Allowed"}

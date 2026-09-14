@@ -95,18 +95,21 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
           ...s,
           shipments: mergeShipments(shipments as Shipment[]),
           systemStatus,
-          activity: systemStatus.mode === "DEMO"
-            ? [...(events as BackendEvent[]).map(mapEvent), ...SEED_ACTIVITY]
-            : [],
+          activity:
+            systemStatus.mode === "DEMO"
+              ? [...(events as BackendEvent[]).map(mapEvent), ...SEED_ACTIVITY]
+              : [],
           ledger: [
             ...(ledger as any[]).map(mapBackendLedger),
             ...(systemStatus.mode === "DEMO" ? SEED_LEDGER : []),
           ],
-          runs: Object.fromEntries((workflows as any[]).map((workflow) => {
-            const run = mapRun(workflow);
-            if (workflow.persistedState === "ESCALATED") run.state = "REJECTED_ESCALATED";
-            return [run.shipmentId, run];
-          })),
+          runs: Object.fromEntries(
+            (workflows as any[]).map((workflow) => {
+              const run = mapRun(workflow);
+              if (workflow.persistedState === "ESCALATED") run.state = "REJECTED_ESCALATED";
+              return [run.shipmentId, run];
+            }),
+          ),
         })),
       )
       .catch(() =>
@@ -146,10 +149,14 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, user: null }));
   }, []);
   const reset = useCallback(
-    () => setState((s) => ({
-      ...initial(), user: s.user, shipments: s.shipments, systemStatus: s.systemStatus,
-      generation: s.generation + 1,
-    })),
+    () =>
+      setState((s) => ({
+        ...initial(),
+        user: s.user,
+        shipments: s.shipments,
+        systemStatus: s.systemStatus,
+        generation: s.generation + 1,
+      })),
     [],
   );
   const triggerScenario = useCallback(
@@ -175,7 +182,10 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
           runs: { ...s.runs, [id]: run },
           shipments: s.shipments.map((x) => (x.id === id ? p.shipment : x)),
           ledger: persistedLedger
-            ? [...(persistedLedger as any[]).map(mapBackendLedger), ...(s.systemStatus.mode === "DEMO" ? SEED_LEDGER : [])]
+            ? [
+                ...(persistedLedger as any[]).map(mapBackendLedger),
+                ...(s.systemStatus.mode === "DEMO" ? SEED_LEDGER : []),
+              ]
             : s.ledger,
         }));
       } catch (e) {
@@ -206,64 +216,68 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
   );
   const resolveApproval = useCallback(
     async (id: string, action: ApprovalActionType, optionId?: string, note?: string) => {
-        const user = state.user;
-        if (user?.role !== "approver") throw new Error("Approver role is required.");
-        setState((s) => ({ ...s, lastError: null }));
-        const endpoint = action === "approve" ? "approval" : action;
-        const r = await fetch(`${API}/api/${endpoint}/${id}`, {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-user-role": user.role },
-          body: JSON.stringify({ optionId, note }),
-        });
-        const p = await r.json();
-        if (!r.ok) {
-          const message = p.message ?? p.error ?? "Approval action failed";
-          setState((s) => ({ ...s, lastError: message }));
-          throw new Error(message);
-        }
-        const persistedLedger = await fetch(`${API}/api/ledger`).then((response) =>
-          response.json(),
-        );
-        setState((s) => {
-          const old = s.runs[id];
-          if (!old) return s;
-          if (action === "reject")
-            return {
-              ...s,
-              runs: {
-                ...s.runs,
-                [id]: {
-                  ...old,
-                  state: "REJECTED_ESCALATED",
-                  approval: {
-                    type: action,
-                    actorId: user.id,
-                    actorName: user.name,
-                    atIso: new Date().toISOString(),
-                    note: note ?? "",
-                  },
-                },
-              },
-              shipments: s.shipments.map((x) => (x.id === id ? p.shipment : x)),
-              ledger: [...(persistedLedger as any[]).map(mapBackendLedger), ...(s.systemStatus.mode === "DEMO" ? SEED_LEDGER : [])],
-            };
-          const decision = {
-            ...old.decision!,
-            committed_option_id: optionId ?? old.decision!.recommended_option_id,
-            overall_status: action === "approve" ? "APPROVED_COMMITTED" : "OVERRIDDEN_COMMITTED",
-          } as Decision;
+      const user = state.user;
+      if (user?.role !== "approver") throw new Error("Approver role is required.");
+      setState((s) => ({ ...s, lastError: null }));
+      const endpoint = action === "approve" ? "approval" : action;
+      const r = await fetch(`${API}/api/${endpoint}/${id}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-user-role": user.role },
+        body: JSON.stringify({ optionId, note }),
+      });
+      const p = await r.json();
+      if (!r.ok) {
+        const message = p.message ?? p.error ?? "Approval action failed";
+        setState((s) => ({ ...s, lastError: message }));
+        throw new Error(message);
+      }
+      const persistedLedger = await fetch(`${API}/api/ledger`).then((response) => response.json());
+      setState((s) => {
+        const old = s.runs[id];
+        if (!old) return s;
+        if (action === "reject")
           return {
             ...s,
             runs: {
               ...s.runs,
-              [id]: { ...old, state: decision.overall_status, decision, act: mapAct(p) },
+              [id]: {
+                ...old,
+                state: "REJECTED_ESCALATED",
+                approval: {
+                  type: action,
+                  actorId: user.id,
+                  actorName: user.name,
+                  atIso: new Date().toISOString(),
+                  note: note ?? "",
+                },
+              },
             },
             shipments: s.shipments.map((x) => (x.id === id ? p.shipment : x)),
-            ledger: persistedLedger
-              ? [...(persistedLedger as any[]).map(mapBackendLedger), ...(s.systemStatus.mode === "DEMO" ? SEED_LEDGER : [])]
-              : [mapLedger(p), ...s.ledger],
+            ledger: [
+              ...(persistedLedger as any[]).map(mapBackendLedger),
+              ...(s.systemStatus.mode === "DEMO" ? SEED_LEDGER : []),
+            ],
           };
-        });
+        const decision = {
+          ...old.decision!,
+          committed_option_id: optionId ?? old.decision!.recommended_option_id,
+          overall_status: action === "approve" ? "APPROVED_COMMITTED" : "OVERRIDDEN_COMMITTED",
+        } as Decision;
+        return {
+          ...s,
+          runs: {
+            ...s.runs,
+            [id]: { ...old, state: decision.overall_status, decision, act: mapAct(p) },
+          },
+          shipments: s.shipments.map((x) => (x.id === id ? p.shipment : x)),
+          ledger: persistedLedger
+            ? [
+                ...(persistedLedger as any[]).map(mapBackendLedger),
+                ...(s.systemStatus.mode === "DEMO" ? SEED_LEDGER : []),
+              ]
+            : [mapLedger(p), ...s.ledger],
+        };
+      });
     },
     [state.user],
   );
@@ -362,18 +376,22 @@ function mapRun(p: any): WorkflowRun {
       description: o.reason,
       cost_usd: o.costUsd,
       days_added: o.delayDays,
-      fuel_pct: 0,
+      fuel_pct: o.costBreakdown?.baselineFuelTonnes
+        ? (o.fuelTonnes / o.costBreakdown.baselineFuelTonnes) * 100
+        : 0,
       fuel_tonnes: o.fuelTonnes,
       risk_score: o.riskScore,
       status: o.status,
       refusal_reason: o.policyReasons[0],
       constraint: o.policyReasons[0],
+      cost_breakdown: mapCostBreakdown(o.costBreakdown),
     })),
     do_nothing: {
       cost_usd: bd.doNothing.costUsd,
       days_added: bd.doNothing.delayDays,
       risk_score: bd.doNothing.riskScore,
       description: bd.doNothing.reason,
+      cost_breakdown: mapCostBreakdown(bd.doNothing.costBreakdown),
     },
     recommended_option_id: bd.recommendedOption,
     committed_option_id: p.action ? bd.recommendedOption : null,
@@ -517,12 +535,15 @@ function mapBackendLedger(entry: any): LedgerEntry {
     description: o.reason,
     cost_usd: o.costUsd,
     days_added: o.delayDays,
-    fuel_pct: 0,
+    fuel_pct: o.costBreakdown?.baselineFuelTonnes
+      ? (o.fuelTonnes / o.costBreakdown.baselineFuelTonnes) * 100
+      : 0,
     fuel_tonnes: o.fuelTonnes,
     risk_score: o.riskScore,
     status: o.status,
     refusal_reason: o.policyReasons?.[0],
     constraint: o.policyReasons?.[0],
+    cost_breakdown: mapCostBreakdown(o.costBreakdown),
   }));
   return {
     id: entry.id,
@@ -544,6 +565,7 @@ function mapBackendLedger(entry: any): LedgerEntry {
         days_added: decision.doNothing?.delayDays ?? 0,
         risk_score: decision.doNothing?.riskScore ?? 0,
         description: decision.doNothing?.reason ?? "",
+        cost_breakdown: mapCostBreakdown(decision.doNothing?.costBreakdown),
       },
       recommended_option_id: decision.recommendedOption ?? null,
       constraint_analysis: decision.policyRulesTriggered ?? [],
@@ -553,6 +575,21 @@ function mapBackendLedger(entry: any): LedgerEntry {
       logs: (payload.logs ?? []).map(mapEvent),
       notification: payload.notification,
     },
+  };
+}
+
+function mapCostBreakdown(value: any) {
+  if (!value) return undefined;
+  return {
+    bunker_fuel_usd_per_tonne: value.bunkerFuelUsdPerTonne ?? 0,
+    baseline_fuel_tonnes: value.baselineFuelTonnes ?? 0,
+    option_fuel_tonnes: value.optionFuelTonnes ?? 0,
+    fuel_usd: value.fuelUsd ?? 0,
+    vessel_time_usd: value.vesselTimeUsd ?? 0,
+    handling_usd: value.handlingUsd ?? 0,
+    cargo_protection_usd: value.cargoProtectionUsd ?? 0,
+    risk_reserve_usd: value.riskReserveUsd ?? 0,
+    method: value.method ?? "route_cost_v1",
   };
 }
 
