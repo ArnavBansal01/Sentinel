@@ -58,7 +58,8 @@
 - **Language**: TypeScript (Strict Mode)
 - **Styling**: Tailwind CSS, Class Variance Authority, Radix UI primitives
 - **Icons & Visuals**: Lucide React, Custom SVG Geographic Map & Canvas Visualizations
-- **AI Engine**: Official Google Gen AI SDK with structured schema validation; deterministic decisions are used only in explicit demo mode
+- **Current AI Engine**: Official Google Gen AI SDK with structured schema validation; deterministic decisions are used only in explicit demo mode
+- **Local Model Prototype**: Reproducible text-classification training pipeline, model artifact, evaluation report, and offline inference demo in `model-prototype/`. This is a proof of concept, not the production decision engine or an LLM.
 
 ---
 
@@ -145,6 +146,9 @@
 - `npm run preview` — Locally preview the production build.
 - `npm run lint` — Runs ESLint checks across the codebase.
 - `npm run format` — Formats files with Prettier.
+- `npm run model:train` — Trains the local recovery-option classifier and writes a versioned artifact.
+- `npm run model:evaluate` — Runs five-fold cross-validation and writes the evaluation report.
+- `npm run model:demo -- "description"` — Runs offline inference using the saved local artifact.
 
 ---
 

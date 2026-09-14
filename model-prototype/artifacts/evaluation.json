@@ -1,0 +1,26 @@
+{
+  "evaluation": "5-fold cross-validation",
+  "dataset": "synthetic educational disruption scenarios",
+  "examples": 30,
+  "accuracy": 0.7,
+  "correct": 21,
+  "total": 30,
+  "confusionMatrix": {
+    "reroute": {
+      "reroute": 4,
+      "respeed": 2,
+      "switch_mode": 4
+    },
+    "respeed": {
+      "reroute": 2,
+      "respeed": 7,
+      "switch_mode": 1
+    },
+    "switch_mode": {
+      "reroute": 0,
+      "respeed": 0,
+      "switch_mode": 10
+    }
+  },
+  "warning": "Prototype metrics on a small synthetic dataset do not demonstrate production performance."
+}
