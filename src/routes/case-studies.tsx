@@ -128,7 +128,7 @@ function CaseStudiesPage() {
                     What if Sentinel Flash had watched the route?
                   </h2>
                   <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-                    The 20,000 TEU container ship became lodged across the canal during high winds and a sandstorm,
+                    The Ever Given container ship became lodged across the canal during high winds and a sandstorm,
                     blocking one of the world’s most important shipping corridors. The case shows why early verification,
                     route-level cost comparison, safety rules, and a complete decision record matter.
                   </p>
