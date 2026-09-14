@@ -28,7 +28,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase",
+        "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold tracking-wide uppercase",
         TONE_CLASS[tone],
         className,
       )}
@@ -83,10 +83,16 @@ export function Panel({
   return (
     <section className={cn("panel flex min-h-0 flex-col overflow-hidden", className)}>
       {(title || actions) && (
-        <header className="flex min-h-16 items-center justify-between gap-4 border-b border-border px-4 py-3.5 sm:px-5">
+        <header className="flex min-h-16 items-center justify-between gap-4 border-b border-border/70 px-4 py-3.5 sm:px-5">
           <div className="min-w-0">
-            <h2 className="truncate text-[15px] font-semibold tracking-tight text-foreground">{title}</h2>
-            {subtitle && <p className="mt-0.5 truncate text-xs leading-relaxed text-muted-foreground">{subtitle}</p>}
+            <h2 className="truncate text-[15px] font-semibold tracking-tight text-foreground">
+              {title}
+            </h2>
+            {subtitle && (
+              <p className="mt-0.5 truncate text-xs leading-relaxed text-muted-foreground">
+                {subtitle}
+              </p>
+            )}
           </div>
           {actions}
         </header>
@@ -118,7 +124,9 @@ export function Metric({
   return (
     <div className="metric-card panel flex min-h-28 flex-col justify-between gap-2 p-4 sm:p-5">
       <span className="label-xs">{label}</span>
-      <span className={cn("num text-2xl leading-none font-semibold tracking-tight", valueTone)}>{value}</span>
+      <span className={cn("num text-2xl leading-none font-semibold tracking-tight", valueTone)}>
+        {value}
+      </span>
       {hint && <span className="text-[11px] text-muted-foreground">{hint}</span>}
     </div>
   );
@@ -161,7 +169,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-all duration-200 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
+        "button-glow inline-flex items-center justify-center gap-1.5 rounded-xl font-semibold transition-all duration-200 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
         size === "sm" ? "h-7 px-2.5 text-xs" : "h-9 px-3.5 text-sm",
         variants[variant],
         className,

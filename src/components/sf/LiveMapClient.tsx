@@ -148,7 +148,7 @@ export function LiveMapClient({ shipments, affectedIds, selectedId, onSelect }: 
                 <button
                   type="button"
                   onClick={() => onSelect?.(shipment.id)}
-                  className="mt-3 w-full rounded-md bg-sky-600 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-700"
+                  className="mt-3 w-full rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-800"
                 >
                   Open shipment
                 </button>
@@ -160,7 +160,7 @@ export function LiveMapClient({ shipments, affectedIds, selectedId, onSelect }: 
         <MapLifecycle selected={selected} />
       </MapContainer>
 
-      <div className="pointer-events-none absolute bottom-3 left-3 right-3 z-[450] flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[#07111c]/90 px-3 py-2 text-[10px] text-slate-300 shadow-xl backdrop-blur">
+      <div className="map-legend pointer-events-none absolute right-3 bottom-3 left-3 z-[450] flex flex-wrap items-center gap-3 rounded-xl border border-border/80 bg-surface/90 px-3 py-2 text-[10px] text-muted-foreground shadow-lg backdrop-blur-xl">
         <span>
           <i className="mr-1 inline-block h-2 w-2 rounded-full bg-sky-400" />
           Ship

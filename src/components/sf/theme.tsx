@@ -2,19 +2,19 @@ import { Moon, Sun } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
 type Theme = "light" | "dark";
-const KEY = "sf.theme";
+const KEY = "sf.theme.v2";
 
 const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
-  theme: "dark",
+  theme: "light",
   toggle: () => {},
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
     const stored = window.localStorage.getItem(KEY);
-    const next: Theme = stored === "dark" || stored === "light" ? stored : "dark";
+    const next: Theme = stored === "dark" || stored === "light" ? stored : "light";
     setTheme(next);
     document.documentElement.classList.toggle("dark", next === "dark");
   }, []);

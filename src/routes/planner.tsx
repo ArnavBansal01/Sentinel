@@ -132,7 +132,7 @@ function PlannerPage() {
           ))}
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-5 xl:grid-cols-[290px_minmax(520px,1fr)_350px]">
+        <div className="grid min-h-0 flex-1 gap-5 xl:grid-cols-[minmax(280px,0.75fr)_minmax(480px,1.25fr)] 2xl:grid-cols-[290px_minmax(520px,1fr)_350px]">
           <Panel
             title="What the system is doing"
             subtitle="Sense → Simulate → Decide → Commit"
@@ -171,7 +171,7 @@ function PlannerPage() {
           <Panel
             title="Shipments needing attention"
             subtitle={`${state.shipments.length} shipments being watched`}
-            className="max-h-[620px] xl:max-h-[620px]"
+            className="max-h-[620px] xl:col-span-2 xl:max-h-[620px] 2xl:col-span-1"
             bodyClassName="overflow-hidden flex"
           >
             <ShipmentList shipments={ordered} onHover={setHovered} />

@@ -58,32 +58,32 @@
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.875rem;
 
-  --background: oklch(0.982 0.004 95);
-  --foreground: oklch(0.24 0.035 258);
+  --background: oklch(0.968 0.006 174);
+  --foreground: oklch(0.25 0.025 190);
   --surface: oklch(1 0 0);
-  --surface-muted: oklch(0.968 0.005 250);
+  --surface-muted: oklch(0.972 0.008 174);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.035 258);
+  --card-foreground: oklch(0.25 0.025 190);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.24 0.035 258);
 
-  --primary: oklch(0.38 0.078 255);
+  --primary: oklch(0.39 0.085 184);
   --primary-foreground: oklch(0.985 0.003 250);
-  --secondary: oklch(0.958 0.006 250);
-  --secondary-foreground: oklch(0.3 0.04 258);
-  --muted: oklch(0.962 0.005 250);
-  --muted-foreground: oklch(0.52 0.025 254);
-  --accent: oklch(0.945 0.012 250);
-  --accent-foreground: oklch(0.3 0.04 258);
+  --secondary: oklch(0.955 0.012 174);
+  --secondary-foreground: oklch(0.31 0.05 184);
+  --muted: oklch(0.958 0.006 174);
+  --muted-foreground: oklch(0.53 0.02 190);
+  --accent: oklch(0.93 0.035 166);
+  --accent-foreground: oklch(0.31 0.06 184);
 
   --destructive: oklch(0.52 0.18 25);
   --destructive-foreground: oklch(0.99 0.002 250);
 
-  --success: oklch(0.5 0.1 155);
+  --success: oklch(0.58 0.16 158);
   --success-foreground: oklch(0.99 0.002 250);
-  --success-surface: oklch(0.955 0.03 155);
+  --success-surface: oklch(0.955 0.045 158);
   --warning: oklch(0.58 0.12 70);
   --warning-foreground: oklch(0.99 0.002 250);
   --warning-surface: oklch(0.96 0.04 80);
@@ -93,10 +93,10 @@
   --info: oklch(0.46 0.09 250);
   --info-surface: oklch(0.955 0.022 250);
 
-  --border: oklch(0.905 0.008 250);
-  --border-strong: oklch(0.84 0.012 250);
-  --input: oklch(0.9 0.008 250);
-  --ring: oklch(0.52 0.09 255);
+  --border: oklch(0.9 0.012 174);
+  --border-strong: oklch(0.81 0.024 174);
+  --input: oklch(0.9 0.014 174);
+  --ring: oklch(0.58 0.13 166);
 
   --map-sea: oklch(0.955 0.012 240);
   --map-land: oklch(0.9 0.008 250);
@@ -154,6 +154,7 @@
 
   html {
     -webkit-font-smoothing: antialiased;
+    scrollbar-color: var(--color-border-strong) transparent;
   }
 
   body {
@@ -161,11 +162,27 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-feature-settings: "cv05", "ss01";
+    background-image:
+      radial-gradient(
+        circle at 85% 0%,
+        color-mix(in oklch, var(--color-success) 7%, transparent),
+        transparent 28%
+      ),
+      linear-gradient(
+        180deg,
+        var(--color-background),
+        color-mix(in oklch, var(--color-background) 94%, white)
+      );
   }
 
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--color-success) 24%, transparent);
+    color: var(--color-foreground);
   }
 
   th {
@@ -177,7 +194,41 @@
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 12px 36px color-mix(in oklch, black 11%, transparent);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, black 5%, transparent),
+    0 10px 30px color-mix(in oklch, black 5%, transparent);
+}
+
+.app-sidebar {
+  background-image: linear-gradient(
+    180deg,
+    var(--color-surface),
+    color-mix(in oklch, var(--color-background) 72%, white)
+  );
+  box-shadow: 8px 0 28px color-mix(in oklch, black 3%, transparent);
+}
+
+.app-main {
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--color-border) 24%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--color-border) 18%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 32px 32px;
+}
+
+.app-main table thead {
+  background: color-mix(in oklch, var(--color-surface-muted) 86%, transparent);
+}
+
+.app-main table tbody tr {
+  background: color-mix(in oklch, var(--color-surface) 92%, transparent);
+}
+
+.app-main table tbody tr:nth-child(even) {
+  background: color-mix(in oklch, var(--color-surface-muted) 42%, var(--color-surface));
 }
 
 .dark body {
@@ -321,6 +372,29 @@
   animation: page-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.app-main .panel {
+  animation: panel-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.app-main .panel:nth-child(2) {
+  animation-delay: 55ms;
+}
+
+.app-main .panel:nth-child(3) {
+  animation-delay: 110ms;
+}
+
+@keyframes panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .status-chip {
   animation: chip-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
   transition:
@@ -376,6 +450,24 @@ a {
   transition-timing-function: ease-out;
 }
 
+.button-glow {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 2px color-mix(in oklch, black 8%, transparent);
+}
+
+.button-glow::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 20%, rgb(255 255 255 / 22%) 48%, transparent 76%);
+  content: "";
+  opacity: 0;
+  transform: translateX(-110%);
+  transition:
+    opacity 180ms ease,
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .map-alert-ring {
   animation: alert-ring 1.8s ease-in-out infinite;
   transform-box: fill-box;
@@ -427,13 +519,18 @@ a {
 
   .metric-card:hover {
     border-color: var(--color-border-strong);
-    box-shadow: 0 16px 42px color-mix(in oklch, black 15%, transparent);
-    transform: translateY(-2px);
+    box-shadow: 0 18px 44px color-mix(in oklch, var(--color-primary) 12%, transparent);
+    transform: translateY(-3px);
   }
 
   .workflow-step:hover {
     box-shadow: 0 8px 22px color-mix(in oklch, black 10%, transparent);
     transform: translateY(-1px);
+  }
+
+  .button-glow:hover::after {
+    opacity: 1;
+    transform: translateX(110%);
   }
 
   .app-main tbody tr:hover {
@@ -501,18 +598,22 @@ a:active {
 }
 
 .leaflet-tile-pane {
+  filter: grayscale(28%) saturate(72%) brightness(1.04);
+}
+
+.dark .leaflet-tile-pane {
   filter: invert(100%) hue-rotate(180deg) brightness(72%) contrast(96%) saturate(65%);
 }
 
 .leaflet-control-zoom a {
-  background: rgb(7 17 28 / 92%);
-  color: #e2e8f0;
-  border-color: rgb(255 255 255 / 12%);
+  background: color-mix(in oklch, var(--color-surface) 92%, transparent);
+  color: var(--color-foreground);
+  border-color: var(--color-border);
 }
 
 .leaflet-control-zoom a:hover {
-  background: #142435;
-  color: white;
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
 }
 
 @keyframes sf-map-pulse {

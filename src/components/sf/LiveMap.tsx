@@ -49,7 +49,7 @@ export function LiveMap(props: LiveMapProps) {
     <div
       ref={containerRef}
       className={cn(
-        "relative h-full min-h-[320px] w-full overflow-hidden bg-[#07111c]",
+        "relative h-full min-h-[320px] w-full overflow-hidden bg-map-sea",
         isFullscreen && !document.fullscreenElement && "fixed inset-0 z-[120] h-[100dvh] w-screen",
         props.className,
       )}
@@ -65,7 +65,7 @@ export function LiveMap(props: LiveMapProps) {
       <button
         type="button"
         onClick={toggleFullscreen}
-        className="absolute right-3 top-3 z-[500] grid h-9 w-9 place-items-center rounded-lg border border-white/15 bg-[#0b1622]/90 text-white shadow-lg backdrop-blur hover:bg-[#142435]"
+        className="absolute top-3 right-3 z-[500] grid h-9 w-9 place-items-center rounded-xl border border-border/80 bg-surface/90 text-foreground shadow-lg backdrop-blur-xl hover:bg-accent"
         aria-label={isFullscreen ? "Exit map fullscreen" : "Open map fullscreen"}
         title={isFullscreen ? "Exit map fullscreen" : "Open map fullscreen"}
       >

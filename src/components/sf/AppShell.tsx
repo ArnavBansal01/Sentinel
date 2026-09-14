@@ -32,15 +32,32 @@ import {
 } from "@/components/ui/sheet";
 import { dateTime } from "@/lib/sf/format";
 
-const NAV = [
-  { to: "/planner", label: "Live overview", group: "Operations", icon: Radar },
-  { to: "/shipments", label: "Shipments", group: "Operations", icon: PackageSearch },
-  { to: "/integrity", label: "Temperature safety", group: "Operations", icon: Snowflake },
-  { to: "/scenarios", label: "Recovery plans", group: "Decisions", icon: GitBranch },
-  { to: "/approver", label: "Review decisions", group: "Governance", icon: ClipboardCheck },
-  { to: "/ledger", label: "Decision history", group: "Audit", icon: ScrollText },
-  { to: "/case-studies", label: "Case studies", group: "Learn", icon: BookOpenCheck },
+const NAV_GROUPS = [
+  {
+    label: "Operations",
+    items: [
+      { to: "/planner", label: "Live overview", icon: Radar },
+      { to: "/shipments", label: "Shipments", icon: PackageSearch },
+      { to: "/integrity", label: "Temperature safety", icon: Snowflake },
+    ],
+  },
+  {
+    label: "Decisions",
+    items: [
+      { to: "/scenarios", label: "Recovery plans", icon: GitBranch },
+      { to: "/approver", label: "Review decisions", icon: ClipboardCheck },
+    ],
+  },
+  {
+    label: "Records",
+    items: [
+      { to: "/ledger", label: "Decision history", icon: ScrollText },
+      { to: "/case-studies", label: "Case studies", icon: BookOpenCheck },
+    ],
+  },
 ] as const;
+
+const NAV = NAV_GROUPS.flatMap((group) => group.items);
 
 export function AppShell({
   children,
@@ -108,11 +125,11 @@ export function AppShell({
         isFullscreen && !document.fullscreenElement && "fixed inset-0 z-[100] h-[100dvh] w-screen",
       )}
     >
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface md:flex">
+      <aside className="app-sidebar hidden w-60 shrink-0 flex-col border-r border-border bg-surface md:flex">
         <Link
           to="/planner"
           aria-label="Sentinel Flash live overview"
-          className="brand-lockup flex h-16 shrink-0 items-center gap-3.5 border-b border-border bg-surface/95 px-4 backdrop-blur transition-colors hover:bg-accent/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-inset"
+          className="brand-lockup flex h-[72px] shrink-0 items-center gap-3 border-b border-border/70 px-5 transition-colors hover:bg-accent/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-inset"
         >
           <img
             src="/sentinel-mark.svg"
@@ -130,25 +147,30 @@ export function AppShell({
           </div>
         </Link>
 
-        <nav className="flex-1 space-y-5 px-3 py-5">
-          {NAV.map((item) => (
-            <div key={item.to}>
-              <p className="label-xs px-2 pb-1">{item.group}</p>
-              <Link
-                to={item.to}
-                className="side-nav-link flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground"
-                activeProps={{ className: "bg-accent text-foreground font-medium" }}
-              >
-                <span className="flex items-center gap-2">
-                  <item.icon className="h-4 w-4" aria-hidden />
-                  {item.label}
-                </span>
-                {item.to === "/approver" && pending > 0 && (
-                  <span className="num rounded bg-warning-surface px-1.5 text-[11px] font-semibold text-warning">
-                    {pending}
+        <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label} className="space-y-1">
+              <p className="label-xs px-3 pb-1.5">{group.label}</p>
+              {group.items.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="side-nav-link flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground"
+                  activeProps={{
+                    className: "bg-primary text-primary-foreground font-semibold shadow-sm",
+                  }}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <item.icon className="h-4 w-4" aria-hidden />
+                    {item.label}
                   </span>
-                )}
-              </Link>
+                  {item.to === "/approver" && pending > 0 && (
+                    <span className="num rounded-full bg-warning-surface px-1.5 text-[11px] font-semibold text-warning">
+                      {pending}
+                    </span>
+                  )}
+                </Link>
+              ))}
             </div>
           ))}
         </nav>
@@ -157,9 +179,9 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="app-header flex h-16 shrink-0 items-center justify-between gap-5 border-b border-border bg-surface/95 px-4 backdrop-blur sm:px-6 [&_button]:rounded-full">
+        <header className="app-header flex h-[72px] shrink-0 items-center justify-between gap-5 border-b border-border/70 bg-surface/90 px-4 backdrop-blur-xl sm:px-6 [&_button]:rounded-full">
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
+            <h1 className="truncate text-xl font-semibold tracking-[-0.025em]">{title}</h1>
             {subtitle && (
               <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>
             )}
@@ -285,10 +307,8 @@ function SystemStatusBar() {
   return (
     <div
       className={cn(
-        "status-ribbon flex min-h-12 shrink-0 items-center gap-2 overflow-x-auto border-b px-4 py-2 text-[10px] tracking-wide uppercase sm:px-6",
-        live && healthy
-          ? "border-success/25 bg-success-surface/70 text-success"
-          : "border-warning/25 bg-warning-surface/70 text-warning",
+        "status-ribbon flex min-h-12 shrink-0 items-center gap-2 overflow-x-auto border-b border-border/70 bg-surface px-4 py-2 text-[10px] tracking-wide uppercase sm:px-6",
+        live && healthy ? "text-success" : "text-warning",
       )}
     >
       <span className="status-chip flex items-center gap-2 whitespace-nowrap rounded-full border border-current/25 bg-background/30 px-3 py-1.5 text-[11px] font-bold shadow-sm">
