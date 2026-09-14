@@ -69,7 +69,10 @@ export const repository = {
     db
       .prepare("SELECT result_json FROM requests WHERE result_json IS NOT NULL ORDER BY rowid DESC")
       .all()
-      .map((row) => JSON.parse((row as { result_json: string }).result_json) as Record<string, unknown>),
+      .map(
+        (row) =>
+          JSON.parse((row as { result_json: string }).result_json) as Record<string, unknown>,
+      ),
   activity: () =>
     db
       .prepare("SELECT json FROM activity ORDER BY rowid DESC LIMIT 200")
@@ -99,6 +102,41 @@ export const repository = {
     db
       .prepare("INSERT INTO actions(id,decision_id,shipment_id,json) VALUES(?,?,?,?)")
       .run(id, decisionId, shipmentId, JSON.stringify(value)),
+  clearDemoData: () => {
+    const demoShipments = seed.filter((shipment) => shipment.demoScenario);
+    const demoIds = new Set(demoShipments.map((shipment) => shipment.id));
+    const ledgerRows = db.prepare("SELECT id,json FROM ledger").all() as Array<{
+      id: string;
+      json: string;
+    }>;
+
+    db.exec("BEGIN");
+    try {
+      const deleteLedger = db.prepare("DELETE FROM ledger WHERE id=?");
+      for (const row of ledgerRows) {
+        const entry = JSON.parse(row.json) as LedgerEntry;
+        if (demoIds.has(entry.shipmentId)) deleteLedger.run(row.id);
+      }
+
+      for (const shipment of demoShipments) {
+        db.prepare("DELETE FROM actions WHERE shipment_id=?").run(shipment.id);
+        db.prepare("DELETE FROM decisions WHERE shipment_id=?").run(shipment.id);
+        db.prepare("DELETE FROM disruptions WHERE shipment_id=?").run(shipment.id);
+        db.prepare("DELETE FROM activity WHERE shipment_id=?").run(shipment.id);
+        db.prepare("DELETE FROM requests WHERE shipment_id=?").run(shipment.id);
+        db.prepare("UPDATE shipments SET json=?,version=version+1 WHERE id=?").run(
+          JSON.stringify(shipment),
+          shipment.id,
+        );
+      }
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+
+    return demoShipments.map((shipment) => shipment.id);
+  },
   health: () => {
     db.prepare("SELECT 1").get();
     return true;

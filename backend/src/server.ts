@@ -138,6 +138,20 @@ app.post("/api/demo/orchestrate/:shipmentId", async (q, r, n) => {
     n(e);
   }
 });
+app.post("/api/demo/reset", (_q, r, n) => {
+  try {
+    const clearedShipmentIds = repository.clearDemoData();
+    r.json({
+      clearedShipmentIds,
+      shipments: repository.shipments(),
+      activity: repository.activity(),
+      ledger: repository.ledger(),
+      workflows: repository.workflowResults(),
+    });
+  } catch (error) {
+    n(error);
+  }
+});
 for (const kind of ["approval", "reject", "override"] as const)
   app.post(`/api/${kind}/:shipmentId`, async (q, r, n) => {
     try {

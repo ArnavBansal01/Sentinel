@@ -201,6 +201,22 @@ describe("integration", () => {
     }
   });
 
+  it("clears saved presentation demos and restores their shipment state", async () => {
+    await orchestrate("SF-1001", randomUUID(), true);
+    const cleared = repository.clearDemoData();
+    expect(cleared).toEqual(["SF-1001", "SF-1002", "SF-1003"]);
+    expect(repository.shipment("SF-1001")?.currentState).toBe("MONITORED");
+    expect(repository.shipment("SF-1001")?.status).toBe("monitoring");
+    expect(
+      repository
+        .workflowResults()
+        .some((result) =>
+          cleared.includes(String((result.shipment as { id?: string } | undefined)?.id)),
+        ),
+    ).toBe(false);
+    expect(repository.ledger().some((entry) => cleared.includes(entry.shipmentId))).toBe(false);
+  });
+
   it("supports approver approve, reject and viable override outcomes", async () => {
     const approvalRun: any = await orchestrate("SF-1002", randomUUID(), true);
     expect(approvalRun.decision.overallStatus).toBe("PENDING_APPROVAL");

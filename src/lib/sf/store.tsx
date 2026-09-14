@@ -46,7 +46,7 @@ interface SFContextValue {
   ready: boolean;
   login: (r: Role) => void;
   logout: () => void;
-  reset: () => void;
+  reset: () => Promise<void>;
   triggerScenario: (id: string, showcaseDemo?: boolean) => Promise<void>;
   resolveApproval: (id: string, a: ApprovalActionType, o?: string, n?: string) => Promise<void>;
   isBusy: (id: string) => boolean;
@@ -148,17 +148,26 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
     setState((s) => ({ ...s, user: null }));
   }, []);
-  const reset = useCallback(
-    () =>
-      setState((s) => ({
-        ...initial(),
-        user: s.user,
-        shipments: s.shipments,
-        systemStatus: s.systemStatus,
-        generation: s.generation + 1,
-      })),
-    [],
-  );
+  const reset = useCallback(async () => {
+    const response = await fetch(`${API}/api/demo/reset`, { method: "POST" });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.message ?? payload.error ?? "Demo reset failed");
+    setState((s) => ({
+      ...initial(),
+      user: s.user,
+      shipments: mergeShipments(payload.shipments as Shipment[]),
+      activity: (payload.activity as BackendEvent[]).map(mapEvent),
+      ledger: (payload.ledger as any[]).map(mapBackendLedger),
+      runs: Object.fromEntries(
+        (payload.workflows as any[]).map((workflow) => {
+          const run = mapRun(workflow);
+          return [run.shipmentId, run];
+        }),
+      ),
+      systemStatus: s.systemStatus,
+      generation: s.generation + 1,
+    }));
+  }, []);
   const triggerScenario = useCallback(
     async (id: string, showcaseDemo = false) => {
       if (busy[id]) return;

@@ -22,7 +22,14 @@ import { cn } from "@/lib/utils";
 import { useSentinel } from "@/lib/sf/store";
 import { Badge, Button } from "./ui";
 import { ThemeToggle } from "./theme";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { dateTime } from "@/lib/sf/format";
 
 const NAV = [
@@ -50,9 +57,9 @@ export function AppShell({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
   const pending = Object.values(state.runs).filter((r) => r.state === "PENDING_APPROVAL").length;
-  const notifications = state.activity.filter((event) =>
-    /detected|refusal|approval|notification|completed|failed/i.test(event.type),
-  ).slice(0, 30);
+  const notifications = state.activity
+    .filter((event) => /detected|refusal|approval|notification|completed|failed/i.test(event.type))
+    .slice(0, 30);
 
   useEffect(() => {
     const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
@@ -107,9 +114,16 @@ export function AppShell({
           aria-label="Sentinel Flash live overview"
           className="brand-lockup flex h-16 shrink-0 items-center gap-3.5 border-b border-border bg-surface/95 px-4 backdrop-blur transition-colors hover:bg-accent/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-inset"
         >
-          <img src="/sentinel-mark.svg" alt="" className="brand-mark h-9 w-9 shrink-0" aria-hidden />
+          <img
+            src="/sentinel-mark.svg"
+            alt=""
+            className="brand-mark h-9 w-9 shrink-0"
+            aria-hidden
+          />
           <div className="min-w-0 space-y-0.5">
-            <p className="truncate text-[15px] leading-4 font-semibold tracking-tight">Sentinel Flash</p>
+            <p className="truncate text-[15px] leading-4 font-semibold tracking-tight">
+              Sentinel Flash
+            </p>
             <p className="truncate text-[9px] leading-3 font-medium tracking-[0.08em] text-muted-foreground uppercase">
               Disruption control tower
             </p>
@@ -146,29 +160,67 @@ export function AppShell({
         <header className="app-header flex h-16 shrink-0 items-center justify-between gap-5 border-b border-border bg-surface/95 px-4 backdrop-blur sm:px-6 [&_button]:rounded-full">
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
-            {subtitle && <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>}
+            {subtitle && (
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {actions}
-            <button type="button" aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} onClick={toggleFullscreen} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground">
+            <button
+              type="button"
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              onClick={toggleFullscreen}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
             <Sheet>
               <SheetTrigger asChild>
-                <button type="button" aria-label="Open live notifications" className="relative inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground">
+                <button
+                  type="button"
+                  aria-label="Open live notifications"
+                  className="relative inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                >
                   <Bell className="h-4 w-4" />
-                  {notifications.length > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-danger px-1 text-[9px] font-bold text-white">{Math.min(notifications.length, 99)}</span>}
+                  {notifications.length > 0 && (
+                    <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-danger px-1 text-[9px] font-bold text-white">
+                      {Math.min(notifications.length, 99)}
+                    </span>
+                  )}
                 </button>
               </SheetTrigger>
               <SheetContent className="overflow-y-auto border-border bg-surface">
-                <SheetHeader><SheetTitle>Live updates</SheetTitle><SheetDescription>New backend events appear here automatically.</SheetDescription></SheetHeader>
+                <SheetHeader>
+                  <SheetTitle>Live updates</SheetTitle>
+                  <SheetDescription>New backend events appear here automatically.</SheetDescription>
+                </SheetHeader>
                 <div className="mt-5 space-y-2">
-                  {notifications.length === 0 ? <p className="text-sm text-muted-foreground">No operational notifications yet.</p> : notifications.map((event) => (
-                    <Link key={event.id} to="/shipment/$id" params={{ id: event.shipmentId }} className="block rounded-lg border border-border bg-surface-muted p-3 hover:border-primary/50">
-                      <div className="flex justify-between gap-3"><span className="num text-xs font-semibold">{event.shipmentId}</span><span className="text-[10px] text-muted-foreground">{dateTime(event.atIso)}</span></div>
-                      <p className="mt-1 text-xs">{event.message}</p><p className="mt-1 text-[10px] uppercase text-muted-foreground">{event.stage} · {event.type}</p>
-                    </Link>
-                  ))}
+                  {notifications.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No operational notifications yet.
+                    </p>
+                  ) : (
+                    notifications.map((event) => (
+                      <Link
+                        key={event.id}
+                        to="/shipment/$id"
+                        params={{ id: event.shipmentId }}
+                        className="block rounded-lg border border-border bg-surface-muted p-3 hover:border-primary/50"
+                      >
+                        <div className="flex justify-between gap-3">
+                          <span className="num text-xs font-semibold">{event.shipmentId}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {dateTime(event.atIso)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs">{event.message}</p>
+                        <p className="mt-1 text-[10px] uppercase text-muted-foreground">
+                          {event.stage} · {event.type}
+                        </p>
+                      </Link>
+                    ))
+                  )}
                 </div>
               </SheetContent>
             </Sheet>
@@ -200,7 +252,16 @@ export function AppShell({
         <SystemStatusBar />
 
         <nav className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-border bg-surface px-3 py-2 md:hidden">
-          {NAV.map((item) => <Link key={item.to} to={item.to} className="whitespace-nowrap rounded px-2 py-1 text-[11px] text-muted-foreground" activeProps={{ className: "bg-accent text-foreground font-semibold" }}>{item.label}</Link>)}
+          {NAV.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="whitespace-nowrap rounded px-2 py-1 text-[11px] text-muted-foreground"
+              activeProps={{ className: "bg-accent text-foreground font-semibold" }}
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         <main className="app-main min-h-0 flex-1 scroll-smooth overflow-auto">{children}</main>
@@ -238,7 +299,7 @@ function SystemStatusBar() {
         {healthy ? `${s.mode} SYSTEM` : "BACKEND OFFLINE"}
       </span>
       {item("Trained LLM", "target design", Sparkles)}
-      
+
       {item("News", s.news, Radio)}
       {item("Weather", s.weather, Radio)}
       {item("AIS", s.ais, Radio)}
@@ -253,6 +314,7 @@ function SystemStatusBar() {
 export function DemoControls({ className }: { className?: string }) {
   const { triggerScenario, reset, isBusy, state } = useSentinel();
   const navigate = useNavigate();
+  const [clearingDemo, setClearingDemo] = useState(false);
 
   const scenarios = [
     { id: "SF-1001", label: "Auto decision demo" },
@@ -291,17 +353,24 @@ export function DemoControls({ className }: { className?: string }) {
           size="sm"
           variant="ghost"
           className="w-full justify-start"
-          onClick={() => {
-            reset();
-            navigate({ to: "/planner" });
+          disabled={clearingDemo}
+          onClick={async () => {
+            setClearingDemo(true);
+            try {
+              await reset();
+              navigate({ to: "/planner" });
+            } finally {
+              setClearingDemo(false);
+            }
           }}
         >
           <RotateCcw className="h-3.5 w-3.5" />
-          Clear current view
+          {clearingDemo ? "Clearing demo…" : "Clear demo runs"}
         </Button>
       </div>
       <p className="pt-3 text-[10px] leading-relaxed text-muted-foreground">
-        These three buttons use fixed demo signals, so they work the same during every presentation. Other shipments use live checks.
+        Each demo injects a clearly labeled disruption and runs the full workflow. Clearing removes
+        saved demo runs from the server and screen.
       </p>
     </div>
   );
