@@ -238,9 +238,7 @@ function SystemStatusBar() {
         {healthy ? `${s.mode} SYSTEM` : "BACKEND OFFLINE"}
       </span>
       {item("Trained LLM", "target design", Sparkles)}
-      <span className="status-chip whitespace-nowrap rounded-full border border-current/15 bg-background/20 px-2.5 py-1.5 opacity-75">
-        MVP runtime: Gemini {s.gemini}
-      </span>
+      
       {item("News", s.news, Radio)}
       {item("Weather", s.weather, Radio)}
       {item("AIS", s.ais, Radio)}
