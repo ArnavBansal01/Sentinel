@@ -1,4 +1,13 @@
-import { AlertTriangle, Ban, CheckCircle2, CircleDot, ExternalLink, Minus } from "lucide-react";
+import {
+  AlertTriangle,
+  Ban,
+  CheckCircle2,
+  CircleDot,
+  ExternalLink,
+  MapPin,
+  Minus,
+  Route as RouteIcon,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { days, usdExact } from "@/lib/sf/format";
@@ -103,6 +112,51 @@ function RiskDetails({ option }: { option: RecoveryOption }) {
           • {override}
         </p>
       ))}
+    </div>
+  );
+}
+
+function RecoveryGuidance({ option }: { option: RecoveryOption }) {
+  const guidance = option.guidance;
+  if (!guidance) return null;
+  const isPortSwitch = option.type === "port_switch";
+  return (
+    <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div className="flex items-start gap-2">
+        {isPortSwitch ? (
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+        ) : (
+          <RouteIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+        )}
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold tracking-wide text-primary uppercase">
+            {isPortSwitch ? "Exact alternate port" : "Recommended sailing route"}
+          </p>
+          <p className="mt-1 text-xs font-semibold text-foreground">{guidance.title}</p>
+        </div>
+      </div>
+      <p className="mt-2 text-[11px] leading-5 font-medium text-foreground">
+        {guidance.route_text}
+      </p>
+      {guidance.onward_leg && (
+        <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+          <span className="font-semibold text-foreground">After discharge:</span>{" "}
+          {guidance.onward_leg}
+        </p>
+      )}
+      <ol className="mt-2 space-y-1 border-t border-primary/15 pt-2">
+        {guidance.steps.map((step, index) => (
+          <li key={step} className="flex gap-2 text-[10px] leading-4 text-muted-foreground">
+            <span className="num font-semibold text-primary">{index + 1}.</span>
+            <span>{step}</span>
+          </li>
+        ))}
+      </ol>
+      {guidance.confirmation_required && (
+        <p className="mt-2 text-[9px] leading-4 font-semibold tracking-wide text-warning uppercase">
+          Planning route · confirm berth, capacity, navigation and carrier acceptance before apply
+        </p>
+      )}
     </div>
   );
 }
@@ -219,6 +273,8 @@ export function RecoveryOptionCard({
         Planning estimate
       </p>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{option.description}</p>
+
+      <RecoveryGuidance option={option} />
 
       <CostDetails breakdown={option.cost_breakdown} />
 

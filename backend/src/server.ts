@@ -249,6 +249,8 @@ for (const kind of ["approval", "reject", "override"] as const)
           kind === "approval" ? "approve" : kind,
           String(q.header("x-user-role") ?? "planner"),
           q.body?.optionId,
+          String(q.body?.note ?? ""),
+          String(q.header("x-user-name") ?? "Approver"),
         ),
       );
     } catch (e) {

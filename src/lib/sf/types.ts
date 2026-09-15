@@ -155,6 +155,14 @@ export interface RecoveryOption {
   cost_breakdown?: CostBreakdown | undefined;
   feasibility?: "confirmed" | "uncertain" | "unavailable";
   risk_assessment?: RiskAssessment;
+  guidance?: {
+    title: string;
+    route_text: string;
+    destination: GeoPoint;
+    steps: string[];
+    onward_leg?: string;
+    confirmation_required: boolean;
+  };
 }
 
 export interface DoNothingBaseline {
@@ -239,6 +247,7 @@ export interface LedgerEntry {
     approval_reasons: string[];
     evidence: EvidenceSource[];
     approval?: ApprovalAction;
+    approvals?: ApprovalAction[];
     traceId?: string;
     logs?: OperationalEvent[];
     notification?: { delivery?: string; provider?: string };

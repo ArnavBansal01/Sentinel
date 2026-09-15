@@ -136,7 +136,9 @@ function LedgerDetail() {
             label="Plan made by"
             value={
               <Badge tone={entry.decisionSource === "gemini" ? "info" : "neutral"}>
-                {entry.decisionSource === "gemini" ? "Gemini runtime (MVP) · trained LLM target" : "Demo or backup logic"}
+                {entry.decisionSource === "gemini"
+                  ? "Gemini runtime (MVP) · trained LLM target"
+                  : "Demo or backup logic"}
               </Badge>
             }
           />
@@ -172,7 +174,11 @@ function LedgerDetail() {
                       <div className="flex items-center justify-between gap-2">
                         <span className="num text-[11px] text-muted-foreground">{e.connector}</span>
                         <Badge tone={e.dataStatus === "LIVE" ? "success" : "warning"}>
-                          {e.dataStatus === "LIVE" ? "Live signal" : e.dataStatus === "UNAVAILABLE" ? "Unavailable" : "Demo signal"}
+                          {e.dataStatus === "LIVE"
+                            ? "Live signal"
+                            : e.dataStatus === "UNAVAILABLE"
+                              ? "Unavailable"
+                              : "Demo signal"}
                         </Badge>
                       </div>
                       <p className="mt-1 text-xs font-medium">{e.label}</p>
@@ -212,14 +218,25 @@ function LedgerDetail() {
                 </ol>
               </Panel>
             ) : null}
-            {entry.snapshot?.approval && (
+            {(entry.snapshot?.approvals?.length || entry.snapshot?.approval) && (
               <Panel title="Human decision" bodyClassName="p-3">
-                <p className="text-sm">
-                  <span className="font-medium capitalize">{entry.snapshot.approval.type}</span> by{" "}
-                  {entry.snapshot.approval.actorName} ·{" "}
-                  <span className="num">{dateTime(entry.snapshot.approval.atIso)}</span>
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">{entry.snapshot.approval.note}</p>
+                <div className="space-y-3">
+                  {(entry.snapshot.approvals?.length
+                    ? entry.snapshot.approvals
+                    : [entry.snapshot.approval!]
+                  ).map((approval, index) => (
+                    <div key={`${approval.atIso}-${index}`}>
+                      <p className="text-sm">
+                        <span className="font-medium capitalize">{approval.type}</span> by{" "}
+                        {approval.actorName} ·{" "}
+                        <span className="num">{dateTime(approval.atIso)}</span>
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {approval.note || "No review note supplied."}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </Panel>
             )}
           </>

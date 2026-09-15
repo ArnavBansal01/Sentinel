@@ -92,10 +92,28 @@ export function ApprovalPanel({ run }: { run: WorkflowRun }) {
       </ul>
 
       {recommended && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          Best plan: <span className="font-medium text-foreground">{recommended.label}</span> ·{" "}
-          <span className="num">{usdExact(recommended.cost_usd)}</span>
-        </p>
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Best plan: <span className="font-medium text-foreground">{recommended.label}</span> ·{" "}
+            <span className="num">{usdExact(recommended.cost_usd)}</span>
+          </p>
+          {recommended.guidance && (
+            <div className="rounded-lg border border-primary/25 bg-primary/5 p-3">
+              <p className="label-xs text-primary">
+                {recommended.type === "port_switch" ? "GO TO THIS PORT" : "TAKE THIS ROUTE"}
+              </p>
+              <p className="mt-1 text-xs font-semibold">{recommended.guidance.title}</p>
+              <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                {recommended.guidance.route_text}
+              </p>
+              {recommended.guidance.onward_leg && (
+                <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                  After discharge: {recommended.guidance.onward_leg}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {!isApprover ? (

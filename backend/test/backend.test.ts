@@ -183,6 +183,22 @@ describe("recovery applicability", () => {
   });
 });
 describe("route-specific economics", () => {
+  it("gives every reroute an ordered named path and every port switch an exact alternate port", () => {
+    for (const shipment of shipments) {
+      const reroute = routeFor(shipment, "reroute");
+      expect(reroute.guidance?.routeText).toContain(shipment.origin.name);
+      expect(reroute.guidance?.routeText).toContain(shipment.destination.name);
+      expect(reroute.guidance?.steps.length).toBeGreaterThanOrEqual(3);
+      expect(reroute.points.length).toBeGreaterThanOrEqual(3);
+
+      const portSwitch = routeFor(shipment, "port_switch");
+      expect(portSwitch.guidance?.destination.code).not.toBe(shipment.destination.code);
+      expect(portSwitch.guidance?.title).toContain(portSwitch.guidance!.destination.code);
+      expect(portSwitch.guidance?.onwardLeg).toContain(shipment.destination.name);
+      expect(portSwitch.points.at(-1)?.code).toBe(portSwitch.guidance?.destination.code);
+    }
+  });
+
   it("produces different costs for different routes and reconciles the breakdown", () => {
     const ningbo = sf("SF-1001");
     const jebelAli = sf("SF-2043");
@@ -371,15 +387,41 @@ describe("integration", () => {
   it("supports approver approve, reject and viable override outcomes", async () => {
     const approvalRun: any = await orchestrate("SF-1002", randomUUID(), true);
     expect(approvalRun.decision.overallStatus).toBe("PENDING_APPROVAL");
-    const approved: any = await approve("SF-1002", "approve", "approver");
+    const approved: any = await approve(
+      "SF-1002",
+      "approve",
+      "approver",
+      undefined,
+      "Validated cold-chain handling capacity.",
+      "Test Approver",
+    );
     expect(approved.actionId).toBeTruthy();
     expect(repository.shipment("SF-1002")?.currentState).toBe("COMMITTED");
+    const approvalLedger: any = repository.ledger().find((entry) => entry.id === approved.ledgerId);
+    expect(approvalLedger.payload.approval).toEqual(
+      expect.objectContaining({
+        type: "approve",
+        actorName: "Test Approver",
+        note: "Validated cold-chain handling capacity.",
+      }),
+    );
 
     const rejectRun: any = await orchestrate("SF-1003", randomUUID(), true);
     expect(rejectRun.decision.overallStatus).toBe("PENDING_APPROVAL");
-    const rejected: any = await approve("SF-1003", "reject", "approver");
+    const rejected: any = await approve(
+      "SF-1003",
+      "reject",
+      "approver",
+      undefined,
+      "Escalate for additional carrier evidence.",
+      "Test Approver",
+    );
     expect(rejected.status).toBe("REJECTED");
     expect(repository.shipment("SF-1003")?.currentState).toBe("ESCALATED");
+    const rejectionLedger: any = repository
+      .ledger()
+      .find((entry) => entry.id === rejected.ledgerId);
+    expect(rejectionLedger.payload.approval.note).toBe("Escalate for additional carrier evidence.");
 
     const overrideRun: any = await orchestrate("SF-1003", randomUUID(), true);
     const alternative = overrideRun.decision.options.find(
@@ -418,13 +460,33 @@ describe("integration", () => {
       expect(run.decision.overallStatus).toBe("ESCALATED");
       expect(run.decision.secondaryApprovalRequired).toBe(true);
 
-      const first: any = await approve(shipment.id, "approve", "approver");
+      const first: any = await approve(
+        shipment.id,
+        "approve",
+        "approver",
+        undefined,
+        "First critical review complete.",
+        "Primary Approver",
+      );
       expect(first.status).toBe("SECONDARY_REVIEW_REQUIRED");
       expect(repository.shipment(shipment.id)?.currentState).toBe("PENDING_APPROVAL");
 
-      const second: any = await approve(shipment.id, "approve", "approver");
+      const second: any = await approve(
+        shipment.id,
+        "approve",
+        "approver",
+        undefined,
+        "Secondary authorization complete.",
+        "Secondary Approver",
+      );
       expect(second.actionId).toBeTruthy();
       expect(repository.shipment(shipment.id)?.currentState).toBe("COMMITTED");
+      const ledger: any = repository.ledger().find((entry) => entry.id === second.ledgerId);
+      expect(ledger.payload.decision.approvalHistory).toHaveLength(2);
+      expect(ledger.payload.decision.approvalHistory.map((item: any) => item.note)).toEqual([
+        "First critical review complete.",
+        "Secondary authorization complete.",
+      ]);
     } finally {
       repository.deleteShipment(shipment.id);
     }

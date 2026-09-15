@@ -309,6 +309,22 @@ function ApproverPage() {
                 {recommendation?.description ??
                   "Open the shipment to inspect the available evidence."}
               </p>
+              {recommendation?.guidance && (
+                <div className="mt-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
+                  <p className="label-xs text-primary">
+                    {recommendation.type === "port_switch" ? "EXACT ALTERNATE PORT" : "EXACT ROUTE"}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold">{recommendation.guidance.title}</p>
+                  <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                    {recommendation.guidance.route_text}
+                  </p>
+                  {recommendation.guidance.onward_leg && (
+                    <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                      After discharge: {recommendation.guidance.onward_leg}
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="decision-brief-stats">
                 <div>
                   <span>Estimated cost</span>

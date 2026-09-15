@@ -154,6 +154,8 @@ export async function approve(
   kind: "approve" | "reject" | "override",
   role: string,
   optionId?: string,
+  note = "",
+  actorName = "Approver",
 ) {
   if (role !== "approver")
     throw Object.assign(new Error("Approver role required"), { status: 403 });
@@ -176,6 +178,13 @@ export async function approve(
     );
   }
   const traceId = randomUUID();
+  const approval = {
+    type: kind,
+    actorName,
+    atIso: new Date().toISOString(),
+    note: note.trim(),
+  };
+  d.approvalHistory = [...(d.approvalHistory ?? []), approval];
   const overrideTarget =
     kind === "override"
       ? d.options.find((option) => option.id === optionId && option.status === "viable")
@@ -222,8 +231,10 @@ export async function approve(
         reasoning: {
           modelReasoning: d.reasoning,
           humanOutcome: "Rejected and escalated without operational execution.",
+          humanNote: approval.note,
           policyRulesTriggered: d.policyRulesTriggered,
         },
+        approval,
         logs: repository
           .activity()
           .filter((event) => event.traceId === traceId)
@@ -242,7 +253,7 @@ export async function approve(
   repository.updateDecision(d);
   s.currentState = "APPROVED";
   repository.saveShipment(s);
-  return new ActAgent().run(s, d, traceId, `HUMAN / APPROVER (${kind})`);
+  return new ActAgent().run(s, d, traceId, `HUMAN / APPROVER (${kind}) · ${actorName}`, approval);
 }
 
 export async function commitExpiredReviews(now = new Date()) {

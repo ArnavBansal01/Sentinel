@@ -17,6 +17,7 @@ import type {
   DisruptionEvent,
   LedgerEntry,
   OperationalEvent,
+  RecoveryOption,
   Role,
   Shipment,
   ShipmentDraft,
@@ -294,7 +295,11 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       const endpoint = action === "approve" ? "approval" : action;
       const r = await fetch(`${API}/api/${endpoint}/${id}`, {
         method: "POST",
-        headers: { "content-type": "application/json", "x-user-role": user.role },
+        headers: {
+          "content-type": "application/json",
+          "x-user-role": user.role,
+          "x-user-name": user.name,
+        },
         body: JSON.stringify({ optionId, note }),
       });
       const p = await r.json();
@@ -558,7 +563,7 @@ function mapRun(p: any): WorkflowRun {
     options: bd.options.map((o: any) => ({
       id: o.id,
       type: o.type,
-      label: String(o.type).replaceAll("_", " "),
+      label: o.route?.guidance?.title ?? String(o.type).replaceAll("_", " "),
       description: o.reason,
       cost_usd: o.costUsd,
       days_added: o.delayDays,
@@ -572,6 +577,7 @@ function mapRun(p: any): WorkflowRun {
       constraint: o.policyReasons[0],
       cost_breakdown: mapCostBreakdown(o.costBreakdown),
       feasibility: o.feasibility,
+      guidance: mapRecoveryGuidance(o.route?.guidance),
       risk_assessment: o.riskAssessment
         ? {
             tier: o.riskAssessment.tier,
@@ -662,6 +668,18 @@ function mapDisruption(d: any): DisruptionEvent {
   };
 }
 
+function mapRecoveryGuidance(guidance: any): RecoveryOption["guidance"] {
+  if (!guidance?.title || !guidance?.destination) return undefined;
+  return {
+    title: guidance.title,
+    route_text: guidance.routeText,
+    destination: guidance.destination,
+    steps: guidance.steps ?? [],
+    onward_leg: guidance.onwardLeg,
+    confirmation_required: guidance.confirmationRequired === true,
+  };
+}
+
 function mapDecisionStatus(status: string, acted: boolean): Decision["overall_status"] {
   if (["AUTO_COMMIT", "AUTO_COMMIT_NOTIFY"].includes(status))
     return acted ? "AUTO_COMMITTED" : "DECISION_READY";
@@ -676,11 +694,13 @@ function mapAct(a: any): ActResult {
   const committedType = a.decision?.options?.find(
     (o: any) => o.id === a.decision.recommendedOption,
   )?.type;
+  const committedOption = a.decision?.options?.find(
+    (o: any) => o.id === a.decision.recommendedOption,
+  );
   return {
     committedOptionId: a.decision?.recommendedOption ?? "",
     committedLabel:
-      a.decision?.options?.find((o: any) => o.id === a.decision.recommendedOption)?.type ??
-      "Committed route",
+      committedOption?.route?.guidance?.title ?? committedOption?.type ?? "Committed route",
     executedAtIso: new Date().toISOString(),
     routeRedrawn: committedType !== "accept_loss",
     partnersNotified: [a.notification?.delivery ?? "simulated_external_delivery"],
@@ -695,6 +715,8 @@ function mapLedger(a: any): LedgerEntry {
     shipmentId: a.shipment?.id ?? "",
     lane: `${a.shipment?.origin?.name ?? ""} → ${a.shipment?.destination?.name ?? ""}`,
     decision:
+      a.decision?.options?.find((o: any) => o.id === a.decision.recommendedOption)?.route?.guidance
+        ?.title ??
       a.decision?.options?.find((o: any) => o.id === a.decision.recommendedOption)?.type ??
       "Decision",
     status: ["AUTO_COMMIT", "AUTO_COMMIT_NOTIFY"].includes(a.decision?.overallStatus)
@@ -745,7 +767,7 @@ function mapBackendLedger(entry: any): LedgerEntry {
   const options = (decision.options ?? []).map((o: any) => ({
     id: o.id,
     type: o.type,
-    label: o.type?.replaceAll("_", " ") ?? "option",
+    label: o.route?.guidance?.title ?? o.type?.replaceAll("_", " ") ?? "option",
     description: o.reason,
     cost_usd: o.costUsd,
     days_added: o.delayDays,
@@ -759,6 +781,7 @@ function mapBackendLedger(entry: any): LedgerEntry {
     constraint: o.policyReasons?.[0],
     cost_breakdown: mapCostBreakdown(o.costBreakdown),
     feasibility: o.feasibility,
+    guidance: mapRecoveryGuidance(o.route?.guidance),
     risk_assessment: o.riskAssessment
       ? {
           tier: o.riskAssessment.tier,
@@ -781,7 +804,8 @@ function mapBackendLedger(entry: any): LedgerEntry {
     timestampIso: entry.timestamp,
     shipmentId: entry.shipmentId,
     lane: `${shipment.origin?.name ?? ""} → ${shipment.destination?.name ?? ""}`,
-    decision: selected.type?.replace("_", " ") ?? entry.eventType,
+    decision:
+      selected.route?.guidance?.title ?? selected.type?.replace("_", " ") ?? entry.eventType,
     status,
     actorType: entry.actor?.startsWith("HUMAN") ? "human" : "system",
     actorName: entry.actor,
@@ -805,6 +829,24 @@ function mapBackendLedger(entry: any): LedgerEntry {
       traceId: entry.traceId,
       logs: (payload.logs ?? []).map(mapEvent),
       notification: payload.notification,
+      approval: payload.approval
+        ? {
+            type: payload.approval.type,
+            actorId: "backend-approver",
+            actorName: payload.approval.actorName ?? entry.actor,
+            atIso: payload.approval.atIso ?? entry.timestamp,
+            note: payload.approval.note ?? "",
+          }
+        : undefined,
+      approvals: (decision.approvalHistory ?? (payload.approval ? [payload.approval] : [])).map(
+        (approval: any) => ({
+          type: approval.type,
+          actorId: "backend-approver",
+          actorName: approval.actorName ?? entry.actor,
+          atIso: approval.atIso ?? entry.timestamp,
+          note: approval.note ?? "",
+        }),
+      ),
     },
   };
 }

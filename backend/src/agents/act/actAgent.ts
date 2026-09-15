@@ -5,9 +5,15 @@ import {
   ConsoleNotificationProvider,
   WebhookNotificationProvider,
 } from "./notificationExecutor.js";
-import type { Decision, LedgerEntry, Shipment } from "../../types/domain.js";
+import type { Decision, HumanApprovalRecord, LedgerEntry, Shipment } from "../../types/domain.js";
 export class ActAgent {
-  async run(s: Shipment, d: Decision, traceId: string, actor = "SYSTEM / AUTONOMOUS") {
+  async run(
+    s: Shipment,
+    d: Decision,
+    traceId: string,
+    actor = "SYSTEM / AUTONOMOUS",
+    approval?: HumanApprovalRecord,
+  ) {
     const old = repository.actionByDecision(d.id);
     if (old) return JSON.parse(old.json) as unknown;
     const option = d.options.find((o) => o.id === d.recommendedOption && o.status === "viable");
@@ -60,6 +66,7 @@ export class ActAgent {
         shipment: s,
         disruption: repository.disruption(s.id),
         notification,
+        ...(approval ? { approval } : {}),
         reasoning: {
           modelReasoning: d.reasoning,
           evidenceUsed: repository.disruption(s.id)?.evidence ?? [],

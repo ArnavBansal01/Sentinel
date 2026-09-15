@@ -59,6 +59,14 @@ export interface RoutePlan {
   etaDeltaDays: number;
   fuelDeltaTonnes: number;
   riskScore: number;
+  guidance?: {
+    title: string;
+    routeText: string;
+    destination: GeoPoint;
+    steps: string[];
+    onwardLeg?: string;
+    confirmationRequired: boolean;
+  };
 }
 export interface ProviderStatus {
   provider: string;
@@ -171,6 +179,13 @@ export interface Decision {
   autoCommitAfterReview?: boolean;
   secondaryApprovalRequired?: boolean;
   approvalStepsCompleted?: number;
+  approvalHistory?: HumanApprovalRecord[];
+}
+export interface HumanApprovalRecord {
+  type: "approve" | "reject" | "override";
+  actorName: string;
+  atIso: string;
+  note: string;
 }
 export interface ActivityEvent {
   id: string;
