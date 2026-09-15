@@ -13,6 +13,7 @@ import { aisRuntimeStatus } from "./connectors/ais/aisStreamConnector.js";
 import type { ActivityEvent, Decision, DecisionOption } from "./types/domain.js";
 import { EDITOR_PORTS, normalizeShipmentDraft, parseShipmentText } from "./shipments/editor.js";
 import { publish } from "./events/eventBus.js";
+import { routeFor } from "./routing/routeEngine.js";
 export const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "1mb" }));
@@ -124,11 +125,29 @@ app.get("/api/workflows", (_q, r) => {
     const decision = repository.decision(shipmentId) ?? (stored["decision"] as Decision | null);
     const storedAction = decision ? repository.actionByDecision(decision.id) : undefined;
     const action = storedAction ? JSON.parse(storedAction.json) : stored["action"];
+    const resolvedDecision = (action?.decision ?? decision) as Decision | null;
+    const decisionWithGuidance = resolvedDecision
+      ? {
+          ...resolvedDecision,
+          options: resolvedDecision.options.map((option) => {
+            if (option.route?.guidance || !["reroute", "port_switch"].includes(option.type))
+              return option;
+            const plannedRoute = routeFor(shipment, option.type);
+            return {
+              ...option,
+              route: {
+                ...(option.route ?? plannedRoute),
+                guidance: plannedRoute.guidance,
+              },
+            };
+          }),
+        }
+      : null;
     return [
       {
         ...stored,
         shipment,
-        decision: action?.decision ?? decision,
+        decision: decisionWithGuidance,
         action,
         persistedState: shipment.currentState,
       },

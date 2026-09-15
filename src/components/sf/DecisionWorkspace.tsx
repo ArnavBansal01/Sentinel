@@ -259,6 +259,8 @@ export function RecoveryOptionCard({
 
       <h3 className="mt-1 text-sm leading-snug font-semibold">{option.label}</h3>
 
+      {recommended && <RecoveryGuidance option={option} />}
+
       <p
         className={cn(
           "num mt-2 text-2xl leading-none font-semibold",
@@ -274,7 +276,7 @@ export function RecoveryOptionCard({
       </p>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{option.description}</p>
 
-      <RecoveryGuidance option={option} />
+      {!recommended && <RecoveryGuidance option={option} />}
 
       <CostDetails breakdown={option.cost_breakdown} />
 
