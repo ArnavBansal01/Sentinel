@@ -49,7 +49,7 @@ export function SensePanel({ event }: { event: DisruptionEvent }) {
                 tone={sourceStatus(s) === "LIVE" ? "success" : "warning"}
                 className={sourceStatus(s) === "LIVE" ? "status-live" : ""}
               >
-                {sourceStatus(s) === "LIVE" ? "LIVE DATA" : "DEMO DATA"}
+                {sourceStatus(s) === "LIVE" ? "LIVE DATA" : "SIMULATED"}
               </Badge>
             </div>
             <p className="mt-1 text-xs font-semibold">{s.label}</p>
@@ -86,7 +86,7 @@ export function SensePanel({ event }: { event: DisruptionEvent }) {
                   tone={sourceStatus(s) === "LIVE" ? "success" : "warning"}
                   className={sourceStatus(s) === "LIVE" ? "status-live" : ""}
                 >
-                  {sourceStatus(s) === "LIVE" ? "LIVE AIS" : "DEMO AIS"}
+                  {sourceStatus(s) === "LIVE" ? "LIVE AIS" : "SIMULATED AIS"}
                 </Badge>
                 <Radio className="h-3.5 w-3.5 text-info" aria-hidden />
               </div>
